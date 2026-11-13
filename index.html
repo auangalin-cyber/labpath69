@@ -1,0 +1,2319 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2f4a66">
+<title>LabPath สพช.69</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+/* =====================================================================
+ * ค่าที่ต้องแก้ก่อนใช้งาน
+ * ---------------------------------------------------------------------
+ * API_URL : Web app URL จาก Apps Script (Deploy › New deployment) ลงท้ายด้วย /exec
+ * CAMP_PIN: ตั้งใจ "ไม่" ใส่ PIN ไว้ในไฟล์นี้ เพราะหน้าเว็บบน GitHub Pages ใครก็เปิดดูโค้ดได้
+ *           PIN จริงเก็บใน Apps Script › Project Settings › Script Properties
+ *           และเซิร์ฟเวอร์เป็นผู้ตรวจ (ผู้ใช้กรอก PIN ตอนเข้าใช้งานครั้งแรก เครื่องจะจำไว้)
+ * ===================================================================== */
+const API_URL = 'https://script.google.com/macros/s/AKfycbyv3GgBzdSUErCzygnbsFFyDdmp4CREgQAW0tDIrN0bzqyM1vpgU4SVSDeVu_Kz_-9t/exec';
+const APP_NAME = 'LabPath สพช.69';
+</script>
+<style>
+/* =====================================================================
+ * ธีม: ฟ้าหม่น (สีคณะสัตวแพทยศาสตร์) + ชมพู (สีจุฬาฯ)
+ * สไตล์ระบบโรงพยาบาลแบบ CUHIS: ตัวอักษรเล็กกะทัดรัด แผงขอบบาง หัวแผงสีอ่อน
+ * จอใหญ่ = กะทัดรัด (14px) · มือถือ = ปุ่ม/ช่องกรอกใหญ่ขึ้น (≥44px) ให้กดง่าย
+ * ===================================================================== */
+:root{
+  --brand:#4a6a8c; --brand-dk:#2f4a66; --brand-lt:#e3ebf3; --brand-xlt:#f3f6fa;
+  --pink:#b83f6e; --pink-lt:#fbe8ef; --pink-line:#e7a9c0;
+  --bg:#edf1f5; --surface:#ffffff; --surface-2:#f6f8fb; --line:#d4dce5; --line-2:#e6ebf1;
+  --text:#1f2a37; --muted:#5b6878;
+  --ok:#2e7d4f; --ok-lt:#e3f3e9; --warn:#9a5b00; --warn-lt:#fdf3dc; --err:#b42335; --err-lt:#fde7ea;
+  --info:#2f5f9a; --info-lt:#e2ecf8; --gray:#5b6878; --gray-lt:#e9edf2;
+  --radius:6px; --shadow:0 1px 2px rgba(31,42,55,.06);
+  --hdr:50px; --nav:60px; --ctl:34px; --fs:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:'Noto Sans Thai','Sarabun',Tahoma,system-ui,sans-serif;font-size:var(--fs);line-height:1.5;color:var(--text);background:var(--bg);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+.hidden{display:none!important}
+.mono{font-variant-numeric:tabular-nums;letter-spacing:.01em}
+
+/* ===================== Header + เมนู ===================== */
+header.top{position:fixed;inset:0 0 auto 0;height:var(--hdr);background:var(--brand-dk);color:#fff;display:flex;align-items:center;gap:8px;padding:0 12px;z-index:30;border-bottom:3px solid var(--pink)}
+header.top .logo{font-weight:600;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:8px;letter-spacing:.01em}
+.mark{background:var(--pink);color:#fff;border-radius:4px;padding:1px 6px;font-size:12px;font-weight:700;letter-spacing:.05em}
+header.top .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;border:0;cursor:pointer;min-height:28px;white-space:nowrap}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:currentColor}
+.pill.on{background:#e3f3e9;color:#1d5c38}.pill.off{background:#e9edf2;color:#334155}.pill.q{background:#fdf3dc;color:#6b4000}.pill.bad{background:#fde7ea;color:#8a1a29}
+.userchip{font-size:12px;line-height:1.25;text-align:right;max-width:40vw;overflow:hidden;padding:4px 8px;border-radius:4px}
+.userchip:hover{background:rgba(255,255,255,.1)}
+.userchip b{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{background:transparent;border:0;color:inherit;min-width:36px;min-height:36px;border-radius:6px;cursor:pointer;font-size:14px}
+.iconbtn:hover{background:rgba(255,255,255,.12)}
+
+nav.side{position:fixed;top:var(--hdr);bottom:0;left:0;width:216px;background:var(--surface);border-right:1px solid var(--line);overflow:auto;padding:8px 0;z-index:20}
+nav.side a{display:flex;align-items:center;gap:8px;padding:7px 14px;color:var(--text);text-decoration:none;min-height:36px;border-left:3px solid transparent;font-size:14px}
+nav.side a .ic{width:20px;text-align:center;font-size:14px}
+nav.side a:hover{background:var(--brand-xlt)}
+nav.side a.act{background:var(--brand-lt);color:var(--brand-dk);font-weight:600;border-left-color:var(--pink)}
+nav.side .sec{font-size:11px;color:var(--muted);padding:12px 14px 4px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+main{padding:calc(var(--hdr) + 14px) 16px 28px 232px;max-width:1320px}
+nav.bottom{display:none}
+.scrim{display:none}
+header.top .logo .short{display:none}
+
+/* ===================== มือถือ: ปุ่มใหญ่ขึ้น เมนูล่าง ===================== */
+@media (max-width:899px){
+  :root{--ctl:44px;--fs:15px}
+  nav.side{transform:translateX(-105%);transition:transform .2s;width:270px;box-shadow:4px 0 20px rgba(0,0,0,.2);z-index:40;top:0;padding-top:12px}
+  nav.side a{min-height:44px}
+  nav.side.open{transform:none}
+  .scrim.open{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:35}
+  main{padding:calc(var(--hdr) + 10px) 12px calc(var(--nav) + 24px + env(safe-area-inset-bottom))}
+  nav.bottom{display:flex;position:fixed;left:0;right:0;bottom:0;height:calc(var(--nav) + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--surface);border-top:1px solid var(--line);z-index:25}
+  nav.bottom a,nav.bottom button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;color:var(--muted);text-decoration:none;background:none;border:0;cursor:pointer;font-weight:600}
+  nav.bottom .ic{font-size:18px;line-height:1}
+  nav.bottom a.act{color:var(--brand-dk)}
+  nav.bottom a.act .ic{filter:none}
+  nav.bottom a.plus .ic{background:var(--pink);color:#fff;border-radius:12px;width:42px;height:30px;display:flex;align-items:center;justify-content:center}
+  .userchip{display:none}
+  header.top .logo .full{display:none}
+  header.top .logo .short{display:inline}
+  input[type=text],input[type=password],input[type=search],input:not([type]),select,textarea{font-size:16px!important}
+}
+
+/* ===================== Components ===================== */
+h1{font-size:18px;margin:0 0 10px;font-weight:600;color:var(--brand-dk)}
+h2{font-size:15px;margin:0 0 8px;font-weight:600;color:var(--brand-dk)}
+h3{font-size:14px;margin:0 0 6px;font-weight:600}
+/* แผงแบบ HIS: ขอบบาง + หัวแผงสีอ่อน */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;box-shadow:var(--shadow);margin-bottom:12px}
+.card>h2:first-child{margin:-12px -14px 10px;padding:7px 14px;background:var(--brand-xlt);border-bottom:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0;font-size:14px;border-left:3px solid var(--brand)}
+.card.flat{box-shadow:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:var(--ctl);padding:4px 14px;border-radius:5px;border:1px solid #c3cdd8;background:var(--surface);cursor:pointer;font-weight:500;text-decoration:none;color:var(--text);font-size:14px}
+.btn:hover{background:var(--brand-xlt);border-color:var(--brand)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand-dk)}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.danger{background:#fff;border-color:var(--pink-line);color:var(--err)}
+.btn.warn{background:var(--warn-lt);border-color:#e9c77a;color:#6b4000}
+.btn.big{min-height:max(40px,var(--ctl));font-size:15px;padding:6px 20px;font-weight:600}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.badge{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:3px;font-size:12px;font-weight:600;white-space:nowrap;border:1px solid transparent}
+.st-pending{background:var(--gray-lt);color:#334155;border-color:#cbd3dc}
+.st-working{background:var(--info-lt);color:#1f4677;border-color:#a9c3e3}
+.st-review{background:var(--warn-lt);color:#6b4000;border-color:#e9c77a}
+.st-verified{background:var(--ok-lt);color:#1d5c38;border-color:#9fd2b3}
+.st-revise{background:var(--err-lt);color:#8a1a29;border-color:#f0a8b3}
+.badge.pend{background:var(--pink-lt);color:var(--pink);border-color:var(--pink-line)}
+.fl{display:inline-block;min-width:20px;text-align:center;border-radius:3px;font-weight:700;font-size:11px;padding:0 5px}
+.fl.F{background:#fdf3dc;color:#6b4000}.fl.L{background:var(--brand-lt);color:var(--brand-dk)}
+
+.alert{border-radius:5px;padding:8px 12px;margin:0 0 10px;border:1px solid;border-left-width:4px}
+.alert.err{background:var(--err-lt);border-color:#f0a8b3;color:#8a1a29}
+.alert.warn{background:var(--warn-lt);border-color:#e9c77a;color:#6b4000}
+.alert.info{background:var(--brand-xlt);border-color:#b9cadc;color:var(--brand-dk)}
+.alert.ok{background:var(--ok-lt);border-color:#9fd2b3;color:#1d5c38}
+
+/* ===================== ฟอร์ม ===================== */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px 14px}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0}
+.fld.l{grid-column:span 2}
+.fld.full{grid-column:1/-1}
+@media (max-width:420px){.fld.l{grid-column:1/-1}}
+.fld>label,.fld>.lab{font-size:13px;font-weight:500;color:var(--muted)}
+.req{color:var(--pink);margin-left:2px}
+input[type=text],input[type=password],input[type=search],input:not([type]),select,textarea{width:100%;min-height:var(--ctl);padding:4px 10px;border:1px solid #b9c5d2;border-radius:4px;background:#fff;font-size:14px}
+textarea{min-height:64px;resize:vertical;padding:6px 10px}
+input:focus,select:focus,textarea:focus{outline:2px solid #b9cfe6;border-color:var(--brand)}
+input:disabled,select:disabled,textarea:disabled{background:var(--surface-2);color:var(--text)}
+.fld.invalid input,.fld.invalid select,.fld.invalid .chips{border-color:var(--err);outline:2px solid #f6c3cb}
+.fld .err-msg{color:var(--err);font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;border-radius:4px}
+.chip{position:relative}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip span{display:inline-flex;align-items:center;min-height:calc(var(--ctl) - 2px);padding:2px 12px;border:1px solid #b9c5d2;border-radius:4px;background:#fff;cursor:pointer;user-select:none;font-size:13px}
+.chip span:hover{border-color:var(--brand)}
+.chip input:checked+span{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.chip input:checked+span::before{content:"✓ "}
+.chip input:focus-visible+span{outline:2px solid #b9cfe6}
+.chip input:disabled+span{opacity:.65;cursor:default}
+fieldset{border:0;padding:0;margin:0}
+details.sec{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:12px;box-shadow:var(--shadow)}
+details.sec>summary{cursor:pointer;padding:7px 14px;font-weight:600;font-size:14px;color:var(--brand-dk);list-style:none;display:flex;align-items:center;gap:8px;min-height:36px;background:var(--brand-xlt);border-bottom:1px solid var(--line);border-left:3px solid var(--brand);border-radius:var(--radius) var(--radius) 0 0}
+details.sec:not([open])>summary{border-bottom:0;border-radius:var(--radius)}
+details.sec>summary::-webkit-details-marker{display:none}
+details.sec>summary::after{content:"▾";margin-left:auto;color:var(--muted)}
+details.sec:not([open])>summary::after{content:"▸"}
+details.sec>.body{padding:10px 14px 14px}
+.seg{display:flex;border:1px solid var(--brand);border-radius:5px;overflow:hidden}
+.seg button{flex:1;min-height:var(--ctl);border:0;background:#fff;font-weight:600;font-size:14px;cursor:pointer;color:var(--brand-dk)}
+.seg button+button{border-left:1px solid var(--brand)}
+.seg button.act{background:var(--brand);color:#fff}
+.formbar{position:sticky;bottom:0;background:linear-gradient(transparent,var(--bg) 35%);padding:12px 0 6px;display:flex;gap:8px;flex-wrap:wrap;z-index:5}
+@media (max-width:899px){.formbar{bottom:calc(var(--nav) + env(safe-area-inset-bottom))}}
+
+/* ===================== ตัวเลขสรุป / ตาราง ===================== */
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:8px 12px;border-top:3px solid var(--gray);text-decoration:none;color:var(--text)}
+.stat:hover{border-color:var(--brand)}
+.stat .n{font-size:22px;font-weight:600;line-height:1.2}
+.stat .t{font-size:12px;color:var(--muted)}
+.stat.s-all{border-top-color:var(--pink)}.stat.s-pending{border-top-color:#8a96a5}.stat.s-working{border-top-color:#3f74b5}
+.stat.s-review{border-top-color:#c98a12}.stat.s-verified{border-top-color:#2e7d4f}.stat.s-revise{border-top-color:#c4344a}
+.bar{height:8px;background:var(--gray-lt);border-radius:999px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--brand)}
+.bar.over>i{background:var(--err)}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th,table.tbl td{padding:5px 8px;border-bottom:1px solid var(--line-2);text-align:left;vertical-align:top}
+table.tbl th{background:var(--brand-lt);font-size:12px;color:var(--brand-dk);font-weight:600;border-bottom:1px solid var(--line)}
+table.tbl tbody tr:nth-child(even) td{background:var(--surface-2)}
+table.tbl tbody tr:hover td{background:#eef3f9}
+table.tbl td.n,table.tbl th.n{text-align:right}
+.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line-2);border-radius:4px}
+
+/* รายการเคส */
+.clist{display:flex;flex-direction:column;border:1px solid var(--line-2);border-radius:4px;overflow:hidden}
+.citem{display:flex;gap:10px;align-items:center;padding:6px 10px;background:var(--surface);border-bottom:1px solid var(--line-2);text-decoration:none;color:var(--text);min-height:44px}
+.citem:last-child{border-bottom:0}
+.citem:nth-child(even){background:var(--surface-2)}
+.citem:hover{background:#eef3f9}
+.citem .sn{font-weight:600;font-size:13px;min-width:104px;color:var(--brand-dk)}
+.citem .main{flex:1;min-width:0}
+.citem .main .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.citem .main .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:520px){.citem{flex-wrap:wrap}.citem .sn{min-width:0}}
+.empty{padding:20px;text-align:center;color:var(--muted)}
+
+/* Patient banner แบบ HIS */
+.banner{background:var(--brand-dk);color:#fff;border-radius:var(--radius);padding:8px 14px;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:4px 20px;align-items:center;position:sticky;top:calc(var(--hdr) + 6px);z-index:10;border-left:5px solid var(--pink);box-shadow:0 2px 6px rgba(31,42,55,.15)}
+.banner .sn{font-size:17px;font-weight:600;letter-spacing:.02em}
+.banner .kv{display:flex;flex-direction:column;line-height:1.25}
+.banner .kv small{opacity:.75;font-size:11px}
+.banner .kv b{font-size:13px;font-weight:600}
+@media (max-width:600px){.banner{position:static}.banner .kv.hide-sm{display:none}}
+.tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--line);margin-bottom:10px;-webkit-overflow-scrolling:touch;scrollbar-width:thin;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0}
+.tabs a{padding:7px 14px;white-space:nowrap;text-decoration:none;color:var(--muted);font-weight:500;border-bottom:3px solid transparent;min-height:38px;display:flex;align-items:center;gap:6px;font-size:13px}
+.tabs a:hover{color:var(--brand-dk);background:var(--brand-xlt)}
+.tabs a.act{color:var(--brand-dk);border-bottom-color:var(--pink);font-weight:600}
+
+/* Modal / toast */
+.modal{position:fixed;inset:0;background:rgba(20,32,46,.45);display:flex;align-items:center;justify-content:center;z-index:60;padding:12px}
+.modal .box{background:var(--surface);border-radius:8px;max-width:680px;width:100%;max-height:90vh;overflow:auto;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.3);border-top:4px solid var(--pink)}
+.modal .box h2{margin-top:0;font-size:16px}
+.modal .acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:12px}
+#toasts{position:fixed;left:50%;transform:translateX(-50%);top:calc(var(--hdr) + 10px);z-index:70;display:flex;flex-direction:column;gap:6px;width:min(92vw,400px);pointer-events:none}
+.toast{padding:9px 14px;border-radius:5px;color:#fff;font-weight:500;box-shadow:0 6px 16px rgba(0,0,0,.2);animation:tin .2s;font-size:14px}
+.toast.ok{background:#2e7d4f}.toast.warn{background:#9a5b00}.toast.err{background:#a61f31}.toast.info{background:var(--brand-dk)}
+@keyframes tin{from{opacity:0;transform:translateY(-6px)}}
+
+/* หน้าเข้าใช้งาน */
+.login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;background:linear-gradient(160deg,var(--brand-dk) 0%,var(--brand) 60%,#8a6f8f 100%)}
+.login .box{background:#fff;border-radius:8px;padding:22px;width:min(440px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--pink)}
+.login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.login-hd .mark{font-size:14px;padding:4px 8px}
+.login h1{margin:0;font-size:18px}
+.lsteps{display:flex;gap:6px;list-style:none;padding:0;margin:0 0 14px}
+.lsteps li{flex:1;text-align:center;font-size:12px;padding:4px;border-bottom:3px solid var(--line);color:var(--muted)}
+.lsteps li.on{border-bottom-color:var(--pink);color:var(--brand-dk);font-weight:600}
+.unitpick{display:grid;gap:6px}
+.unitpick label{display:flex;gap:10px;align-items:center;border:1px solid #b9c5d2;border-radius:5px;padding:6px 12px;cursor:pointer;min-height:max(40px,var(--ctl));font-size:14px}
+.unitpick input{width:18px;height:18px;accent-color:var(--brand)}
+.unitpick label:has(input:checked){border-color:var(--brand);background:var(--brand-lt);font-weight:600}
+
+.bigno{font-size:36px;font-weight:700;color:var(--brand-dk);letter-spacing:.03em;text-align:center;margin:6px 0}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;padding:6px 0 6px 38px;position:relative;border-bottom:1px dashed var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}
+.diff td.mine{background:#f2f8f4}.diff td.srv{background:var(--brand-xlt)}
+.diff label{display:flex;gap:6px;align-items:flex-start;cursor:pointer}
+.diff input{width:18px;height:18px;margin-top:2px;flex:none}
+
+/* ===================== หน้าแลป ===================== */
+.tabs a .cnt{font-size:11px;background:var(--gray-lt);color:var(--muted);border-radius:8px;padding:0 6px;font-weight:600}
+.tabs a .cnt.all{background:var(--ok-lt);color:var(--ok)}
+.tabs a .tick{color:var(--ok);font-weight:700}
+.tabs a .dotreq{width:7px;height:7px;border-radius:50%;background:var(--pink);display:inline-block}
+.badge.pospill{background:var(--pink-lt);color:var(--pink);border-color:var(--pink-line)}
+b.pos{color:var(--pink)}
+table.lab tbody tr{cursor:pointer}
+table.lab td:first-child{white-space:nowrap}
+.tchips{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.tchip{font-size:11px;padding:0 6px;border-radius:3px;background:var(--gray-lt);color:var(--muted);white-space:nowrap}
+.tchip.d{background:var(--ok-lt);color:var(--ok)}
+.tchip.p{background:var(--pink-lt);color:var(--pink);font-weight:600}
+.fld .refhint{font-size:11px;color:var(--muted)}
+.fld.warn input{background:#fff8e1;border-color:#e0a800}
+.fld.warn .refhint{color:#8a5a00;font-weight:600}
+.cibar{position:relative;height:12px;background:var(--gray-lt);border-radius:2px;min-width:120px}
+.cibar i{position:absolute;left:0;top:0;bottom:0;background:var(--brand);border-radius:2px}
+.cibar s{position:absolute;top:-2px;bottom:-2px;border:1.5px solid var(--pink);border-radius:2px;text-decoration:none}
+table.bpgrid th.pc{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:500;padding:6px 2px;white-space:nowrap;font-size:11px}
+table.bpgrid td.pc{text-align:center;padding:4px 2px}
+table.bpgrid td.pc input{width:20px;height:20px;accent-color:var(--pink)}
+table.bpgrid input:not([type=checkbox]),table.bpgrid select{min-height:32px;padding:2px 6px;font-size:13px}
+td.hl{background:var(--pink-lt)!important}
+/* หน้าเข้าใช้งาน: เลือกชื่อ */
+.lgmatch{display:flex;flex-direction:column;gap:4px}
+.lgmatch .btn{justify-content:flex-start;text-align:left}
+.grpshow{padding:8px 12px;border:1px solid var(--line);border-radius:5px;background:var(--brand-xlt);font-size:15px}
+/* Test kit / จองห้อง */
+tr.late td{background:var(--err-lt)!important}
+.bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.bkslot{border:1px solid var(--line);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2);border-top:3px solid var(--ok)}
+.bkslot.full{border-top-color:var(--err);background:#fdf6f7}
+.bklist{display:flex;flex-direction:column;gap:4px;flex:1}
+.bkitem{display:flex;justify-content:space-between;align-items:center;gap:6px;background:#fff;border:1px solid var(--line-2);border-radius:4px;padding:4px 8px;font-size:13px}
+.bkitem .btn{min-height:28px;padding:0 8px;font-size:12px}
+table.bkall td.cur,table.bkall th:has(a[href]):hover{background:var(--brand-lt)!important}
+table.bkall a{text-decoration:none;font-weight:600;color:var(--muted)}
+table.bkall a.some{color:var(--warn)}table.bkall a.full{color:var(--err)}
+</style>
+
+</head>
+<body>
+<div id="app"></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+
+<script>
+'use strict';
+/* =====================================================================
+ * 1) ค่าคงที่ + ตัวช่วยทั่วไป
+ * ===================================================================== */
+const DATA_SHEETS = ['Cases','SA_Results','LA_Results','BloodParasite_Cattle','TestKitLog','SupplyLog','LabBooking'];
+const ST = { PENDING:'รอตรวจ', WORKING:'กำลังตรวจ', REVIEW:'รอตรวจสอบ', VERIFIED:'ตรวจสอบแล้ว', REVISE:'ต้องแก้ไข' };
+const ST_ORDER = [ST.PENDING, ST.WORKING, ST.REVIEW, ST.VERIFIED, ST.REVISE];
+const ST_CLASS = { [ST.PENDING]:'pending', [ST.WORKING]:'working', [ST.REVIEW]:'review', [ST.VERIFIED]:'verified', [ST.REVISE]:'revise' };
+const ST_ICON = { [ST.PENDING]:'○', [ST.WORKING]:'◐', [ST.REVIEW]:'◔', [ST.VERIFIED]:'✓', [ST.REVISE]:'!' };
+const ROLE_TH = { member:'สมาชิก', labpath:'Lab-path', admin:'Admin' };
+
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() :
+  'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0; return (c==='x'?r:(r&3|8)).toString(16); }));
+const todayStr = () => new Date().toLocaleDateString('sv-SE'); // yyyy-mm-dd ตามเวลาเครื่อง
+const isDel = r => r && (r.deleted === true || String(r.deleted).toUpperCase() === 'TRUE');
+const splitMulti = v => String(v ?? '').split(/\s*;\s*/).filter(Boolean);
+const fmtTime = iso => { if (!iso) return ''; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('th-TH', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}); };
+const fmtClock = ms => ms ? new Date(ms).toLocaleTimeString('th-TH', {hour:'2-digit', minute:'2-digit', second:'2-digit'}) : '-';
+
+/** localStorage แบบปลอดภัย (โหมดส่วนตัว/พื้นที่เต็ม จะไม่ทำให้แอปพัง) */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('lp_' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('lp_' + k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  del(k) { try { localStorage.removeItem('lp_' + k); } catch (e) {} }
+};
+
+/* =====================================================================
+ * 2) State กลาง
+ * ===================================================================== */
+const S = {
+  session: store.get('session', null),   // {user, pin, role, unit, group}
+  settings: [], cfg: {}, units: [], lists: {}, campDates: {}, kits: [], supplies: [],
+  data: {}, since: 0, epoch: '', lastSync: 0,
+  queue: store.get('queue', []),          // คิวรอส่ง
+  online: navigator.onLine, syncing: false, flushing: null,
+  conflicts: [], viewDay: null
+};
+DATA_SHEETS.forEach(n => S.data[n] = []);
+
+function loadCache() {
+  const c = store.get('cache', null);
+  if (!c) return;
+  DATA_SHEETS.forEach(n => S.data[n] = (c.data && c.data[n]) || []);
+  S.since = c.since || 0; S.epoch = c.epoch || ''; S.lastSync = c.lastSync || 0;
+  if (c.settings) applySettings(c.settings);
+}
+let cacheTimer = null;
+function saveCache() {
+  clearTimeout(cacheTimer);
+  cacheTimer = setTimeout(() => {
+    const ok = store.set('cache', { data: S.data, since: S.since, epoch: S.epoch, lastSync: S.lastSync, settings: S.settings });
+    if (!ok) console.warn('บันทึกแคชไม่สำเร็จ (พื้นที่เต็ม?)');
+  }, 300);
+}
+const saveQueue = () => { store.set('queue', S.queue); renderStatus(); };
+
+/** แปลงแถวจากชีต Settings → โครงสร้างที่ใช้ง่าย */
+function applySettings(rows) {
+  S.settings = rows || [];
+  S.cfg = {}; S.units = []; S.lists = {}; S.campDates = {}; S.kits = []; S.supplies = []; S.members = [];
+  const sorted = [...S.settings].sort((a, b) => (Number(a.sort) || 0) - (Number(b.sort) || 0));
+  sorted.forEach(r => {
+    if (String(r.active).toUpperCase() === 'FALSE') return;
+    const k = String(r.key ?? '');
+    switch (r.category) {
+      case 'config': S.cfg[k] = r.value; break;
+      case 'campDate': S.campDates[k] = String(r.value || ''); break;
+      case 'unit': { // value เช่น "LA|โคนม" = กลุ่มสัตว์ | ชนิดสัตว์ตั้งต้น
+        const [g, sp] = String(r.value || 'SA').split('|');
+        S.units.push({ code: k, name: r.label || k, group: (g || 'SA').trim(), species: (sp || '').trim() }); break;
+      }
+      case 'member': S.members.push({ name: k, group: String(r.value ?? '') }); break; // รายชื่อนิสิต (ไม่บังคับ)
+      case 'kit': S.kits.push({ name: k, stock: Number(r.value) || 0 }); break;
+      case 'supply': S.supplies.push({ name: k, stock: Number(r.value) || 0 }); break;
+      case 'list': (S.lists[k] = S.lists[k] || []).push(String(r.label ?? r.value)); break;
+    }
+  });
+}
+const campDays = () => { const n = Number(S.cfg.campDays) || Object.keys(S.campDates).length || 5; return Array.from({length: n}, (_, i) => i + 1); };
+const groupList = () => Array.from({ length: Number(S.cfg.groupCount) || 14 }, (_, i) => String(i + 1));
+const unitInfo = code => S.units.find(u => u.code === code) || {};
+/** วันนี้เป็น Day อะไร (ตามวันที่ในตั้งค่า) ถ้าไม่ตรงวันค่าย → null */
+const todayDay = () => { const t = todayStr(); const k = Object.keys(S.campDates).find(d => S.campDates[d] === t); return k ? Number(k) : null; };
+const unitName = code => (S.units.find(u => u.code === code) || {}).name || code || '-';
+const isStaff = () => S.session && (S.session.role === 'labpath' || S.session.role === 'admin');
+const rows = sheet => S.data[sheet].filter(r => !isDel(r));
+const getRec = (sheet, id) => S.data[sheet].find(r => r.id === id);
+/** แก้ได้ถ้าเป็น Lab-path/Admin หรือเคสของหน่วยเดียวกัน หรือกลุ่มเดียวกัน (กลุ่มเวียนหน่วยทุกวัน) — ตรงกับกฎฝั่งเซิร์ฟเวอร์ */
+function canEditCase(c) {
+  if (!S.session || !c) return false;
+  const s = S.session;
+  return isStaff() || (!!s.unit && c.unit === s.unit) || (!!s.group && String(c.group || '') === String(s.group));
+}
+
+/* =====================================================================
+ * 3) API — POST แบบ text/plain (ไม่เกิด CORS preflight กับ Apps Script)
+ * ===================================================================== */
+class NetErr extends Error { constructor(m) { super(m); this.network = true; } }
+async function api(action, payload = {}, timeout = 30000) {
+  const url = window.__LP_API_URL || API_URL;
+  if (!url) throw new NetErr('ยังไม่ได้ตั้งค่า API_URL ใน index.html');
+  const s = S.session || {};
+  const body = JSON.stringify(Object.assign({ action, pin: s.pin, user: s.user, unit: s.unit, group: s.group }, payload));
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  let res, j;
+  try {
+    res = await (window.__lpFetch || fetch)(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body, signal: ctrl.signal, redirect: 'follow' });
+    j = await res.json();
+  } catch (e) {
+    setOnline(false);
+    throw new NetErr('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
+  } finally { clearTimeout(t); }
+  setOnline(true);
+  if (j && j.error === 'bad_pin' && action !== 'login' && S.session) {
+    logout('PIN ถูกเปลี่ยนแล้ว กรุณาเข้าใช้งานใหม่ (ข้อมูลที่รอส่งยังอยู่ในเครื่อง)');
+  }
+  return j || { ok: false, error: 'empty' };
+}
+function setOnline(v) { if (S.online !== v) { S.online = v; renderStatus(); } }
+
+/* =====================================================================
+ * 4) คิวออฟไลน์ — ทุกการบันทึกเข้าคิวก่อนแล้วค่อยส่ง (online ก็ส่งทันที)
+ *    item: {qid, action:create|update|remove, sheet, id, record|changes, version, force, error, message}
+ * ===================================================================== */
+function enqueue(item) {
+  if (item.action === 'update') {
+    // รวมการแก้หลายครั้งของแถวเดียวกันเป็นคำขอเดียว
+    const cr = S.queue.find(q => q.action === 'create' && q.sheet === item.sheet && q.id === item.id);
+    if (cr) { Object.assign(cr.record, item.changes); saveQueue(); return cr; }
+    const up = S.queue.find(q => q.action === 'update' && q.sheet === item.sheet && q.id === item.id && !q.error);
+    if (up) { Object.assign(up.changes, item.changes); saveQueue(); return up; }
+  }
+  item.qid = uuid(); item.at = Date.now();
+  S.queue.push(item); saveQueue();
+  return item;
+}
+const hasPending = (sheet, id) => S.queue.some(q => q.sheet === sheet && q.id === id);
+
+/** ส่งคิวทีละรายการตามลำดับ หยุดเมื่อเน็ตหลุด */
+function flushQueue() {
+  if (S.flushing) return S.flushing;
+  const run = async () => {
+    await null; // ให้ S.flushing ถูกตั้งค่าก่อนเริ่มทำงานจริง
+    const blocked = new Set(), tried = new Set();
+    try {
+      for (;;) {
+        // หยิบรายการถัดไปที่ยังไม่ติดปัญหา (รวมรายการที่เพิ่งเข้าคิวระหว่างส่ง)
+        S.queue.filter(x => x.error).forEach(x => blocked.add(x.id));
+        const q = S.queue.find(x => !x.error && !blocked.has(x.id) && !tried.has(x.qid));
+        if (!q) break;
+        tried.add(q.qid);
+        let r;
+        try {
+          if (q.action === 'create') r = await api('create', { sheet: q.sheet, record: q.record, force: !!q.force });
+          else if (q.action === 'update') r = await api('update', { sheet: q.sheet, id: q.id, version: q.version, changes: q.changes });
+          else if (q.action === 'remove') r = await api('remove', { sheet: q.sheet, id: q.id, version: q.version });
+        } catch (e) { if (e.network) break; throw e; }
+        if (r.ok && r.existed && q.action === 'create' && /_Results$/.test(q.sheet)) {
+          // อีกเครื่องสร้างแถวผลของเคสนี้ไปก่อน → ห้ามทิ้งค่าของเรา: ให้ผู้ใช้เลือกทีละช่อง
+          dropQ(q);
+          upsertLocal(q.sheet, r.record, true);
+          const ch = {}; Object.keys(q.record).forEach(k => { if (!['id', 'caseId', 'examNo'].includes(k) && String(q.record[k] ?? '') !== '') ch[k] = q.record[k]; });
+          q.conflicted = true;
+          openConflict(Object.assign({}, q, { action: 'update', changes: ch }), r.record);
+        } else if (r.ok) {
+          dropQ(q);
+          if (r.record) upsertLocal(q.sheet, r.record, true);
+          q.result = r;
+        } else if (r.conflict) {
+          q.conflicted = true;
+          dropQ(q);
+          upsertLocal(q.sheet, r.server, true);
+          openConflict(q, r.server);
+        } else if (r.error === 'busy') {
+          break;
+        } else {
+          q.error = r.error; q.message = r.message || r.error; q.existing = r.existing || null;
+          blocked.add(q.id); saveQueue();
+          if (!q.silent) toast('ส่งไม่สำเร็จ: ' + q.message, 'err', 6000);
+        }
+      }
+    } finally {
+      S.flushing = null; saveCache(); renderStatus(); refreshView();
+    }
+  };
+  S.flushing = run();
+  return S.flushing;
+}
+function dropQ(q) { S.queue = S.queue.filter(x => x.qid !== q.qid); saveQueue(); }
+
+/** ใส่/แทนแถวในข้อมูลเครื่อง (server=true → ข้อมูลจากเซิร์ฟเวอร์) */
+function upsertLocal(sheet, rec, server) {
+  const arr = S.data[sheet];
+  const i = arr.findIndex(r => r.id === rec.id);
+  if (server) rec = Object.assign({}, rec); // ลบสถานะ _pending
+  if (i >= 0) arr[i] = Object.assign(server ? {} : arr[i], rec); else arr.push(rec);
+  saveCache();
+}
+
+/**
+ * บันทึกข้อมูล (สร้าง/แก้) → แสดงผลในเครื่องทันที แล้วส่งขึ้นเซิร์ฟเวอร์
+ * คืนค่า { q, rec, sent } (sent = ส่งถึงเซิร์ฟเวอร์แล้ว)
+ */
+async function saveRecord(sheet, id, values, { isNew = false, force = false, silent = false } = {}) {
+  const me = S.session.user, now = new Date().toISOString();
+  let q;
+  if (isNew) {
+    const rec = Object.assign({ id, version: 1, createdAt: now, createdBy: me, updatedAt: now, updatedBy: me, deleted: false, _pending: true }, values);
+    upsertLocal(sheet, rec);
+    q = enqueue({ action: 'create', sheet, id, record: Object.assign({ id }, values), force, silent });
+  } else {
+    const cur = getRec(sheet, id);
+    q = enqueue({ action: 'update', sheet, id, version: cur.version, changes: Object.assign({}, values), silent });
+    Object.assign(cur, values, { _pending: true, updatedAt: now, updatedBy: me });
+    saveCache();
+  }
+  await Promise.race([flushQueue(), new Promise(r => setTimeout(r, 15000))]);
+  const stillQueued = S.queue.find(x => x.qid === q.qid);
+  return { q: stillQueued || q, rec: getRec(sheet, id), sent: !stillQueued && !q.conflicted, conflict: !!q.conflicted,
+    error: stillQueued && stillQueued.error ? stillQueued : null };
+}
+/** toast มาตรฐานหลังบันทึก: บันทึกแล้ว / รอส่ง / ชน / ผิดพลาด */
+function saveToast(r, okMsg = 'บันทึกแล้ว') {
+  if (r.conflict) toast('ข้อมูลถูกแก้โดยคนอื่น — กรุณาเลือกค่าที่จะใช้', 'warn', 5000);
+  else if (r.error) toast('บันทึกไม่สำเร็จ: ' + r.error.message, 'err', 6000);
+  else if (r.sent) toast(okMsg, 'ok');
+  else toast('บันทึกไว้ในเครื่อง รอส่ง', 'warn');
+}
+async function removeRecord(sheet, id) {
+  const cur = getRec(sheet, id);
+  if (cur && cur._pending && S.queue.some(q => q.action === 'create' && q.id === id)) {
+    // ยังไม่เคยส่งขึ้นเซิร์ฟเวอร์ → ลบในเครื่องได้เลย
+    S.queue = S.queue.filter(q => q.id !== id); saveQueue();
+    S.data[sheet] = S.data[sheet].filter(r => r.id !== id); saveCache();
+    return { sent: true };
+  }
+  const q = enqueue({ action: 'remove', sheet, id, version: cur ? cur.version : '' });
+  if (cur) { cur.deleted = true; cur._pending = true; }
+  saveCache();
+  await flushQueue();
+  return { sent: !S.queue.includes(q) };
+}
+
+/** ข้อมูลที่ยังรอส่ง → ทับลงบนข้อมูลที่โหลดใหม่ ให้ผู้ใช้ยังเห็นสิ่งที่ตัวเองกรอก */
+function applyPendingOverlay() {
+  S.queue.forEach(q => {
+    const arr = S.data[q.sheet]; if (!arr) return;
+    let cur = arr.find(r => r.id === q.id);
+    if (q.action === 'create' && !cur) { arr.push(Object.assign({ id: q.id, version: 1, createdBy: S.session.user, createdAt: new Date(q.at).toISOString(), _pending: true }, q.record)); }
+    else if (q.action === 'update' && cur) Object.assign(cur, q.changes, { _pending: true });
+    else if (q.action === 'remove' && cur) Object.assign(cur, { deleted: true, _pending: true });
+  });
+}
+
+/* =====================================================================
+ * 5) Sync — polling ทุก 20–30 วินาที ดึงเฉพาะแถวที่เปลี่ยน
+ * ===================================================================== */
+async function sync(full = false) {
+  if (!S.session || S.syncing) return;
+  if (S.session.day !== todayStr()) return logout('เริ่มวันใหม่ — กรุณายืนยันชื่อและหน่วยที่ปฏิบัติงานวันนี้', true);
+  S.syncing = true; renderStatus();
+  let changed = false;
+  try {
+    await flushQueue();
+    const r = await api(full || !S.since ? 'all' : 'changes', { since: S.since });
+    if (!r.ok) return;
+    if (!r.full && S.epoch && r.epoch && r.epoch !== S.epoch) { S.syncing = false; return sync(true); } // Admin ล้างข้อมูล → โหลดใหม่
+    if (r.full) {
+      DATA_SHEETS.forEach(n => S.data[n] = r.data[n] || []);
+      applyPendingOverlay(); changed = true;
+    } else {
+      Object.keys(r.data || {}).forEach(sheet => {
+        (r.data[sheet] || []).forEach(row => {
+          const cur = getRec(sheet, row.id);
+          if (hasPending(sheet, row.id)) return;            // กำลังมีการแก้ในเครื่อง → ไม่ทับ (ถ้าชนจะขึ้นหน้าต่างเลือก)
+          if (cur && Number(cur.version) > Number(row.version)) return;
+          if (cur && Number(cur.version) === Number(row.version) && !cur._pending) return;
+          upsertLocal(sheet, row, true); changed = true;
+        });
+      });
+    }
+    if (r.settings) { applySettings(r.settings); changed = true; }
+    S.since = r.serverTime; S.epoch = r.epoch || S.epoch; S.lastSync = Date.now();
+    saveCache();
+  } catch (e) {
+    if (!e.network) console.error(e);
+  } finally {
+    S.syncing = false; renderStatus();
+    if (changed) refreshView(true);
+  }
+}
+let pollTimer = null, retryTimer = null;
+function startPolling() {
+  clearInterval(pollTimer); clearInterval(retryTimer);
+  const sec = Math.min(60, Math.max(15, Number(S.cfg.pollSeconds) || 25));
+  pollTimer = setInterval(() => { if (document.visibilityState === 'visible') sync(); }, sec * 1000);
+  retryTimer = setInterval(() => { if (S.queue.some(q => !q.error)) flushQueue(); }, 30000); // ส่งซ้ำทุก 30 วินาที
+}
+window.addEventListener('online', () => { setOnline(true); toast('กลับมาออนไลน์ กำลังส่งข้อมูล…', 'info'); sync(); });
+window.addEventListener('offline', () => { setOnline(false); toast('ออฟไลน์ — กรอกต่อได้ ระบบจะส่งให้เมื่อมีเน็ต', 'warn'); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.session) sync(); });
+
+/* =====================================================================
+ * 6) UI พื้นฐาน: toast, modal, สถานะการเชื่อมต่อ
+ * ===================================================================== */
+function toast(msg, type = 'ok', ms = 3200) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type; el.textContent = msg; el.setAttribute('role', 'status');
+  $('#toasts').appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+/** modal: คืน Promise ค่าที่ปุ่มส่งมา (data-v) หรือ null เมื่อปิด */
+function modal(html, { onMount, wide } = {}) {
+  return new Promise(resolve => {
+    const root = $('#modalRoot');
+    const wrap = document.createElement('div');
+    wrap.className = 'modal';
+    wrap.innerHTML = `<div class="box" role="dialog" aria-modal="true" ${wide ? 'style="max-width:960px"' : ''}>${html}</div>`;
+    root.appendChild(wrap);
+    const close = v => { wrap.remove(); resolve(v); };
+    wrap.addEventListener('click', e => {
+      if (e.target === wrap) return close(null);
+      const b = e.target.closest('[data-v]');
+      if (b) close(b.dataset.v === 'null' ? null : (b.dataset.collect ? collect(wrap) : b.dataset.v));
+    });
+    const collect = w => { const o = {}; $$('[name]', w).forEach(i => { if (i.type === 'radio') { if (i.checked) o[i.name] = i.value; } else o[i.name] = i.value; }); return o; };
+    if (onMount) onMount(wrap.firstChild, close);
+    const f = $('input,textarea,select,button.pri', wrap); if (f) setTimeout(() => f.focus(), 30);
+  });
+}
+const confirmBox = (title, body, okText = 'ยืนยัน', cls = 'pri') => modal(
+  `<h2>${esc(title)}</h2><div>${body}</div><div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn ${cls}" data-v="1">${esc(okText)}</button></div>`
+).then(v => v === '1');
+
+function statusBadge(s) { return `<span class="badge st-${ST_CLASS[s] || 'pending'}">${ST_ICON[s] || '○'} ${esc(s || ST.PENDING)}</span>`; }
+
+function renderStatus() {
+  const el = $('#connPill'); if (!el) return;
+  const bad = S.queue.filter(q => q.error).length, waiting = S.queue.length - bad;
+  let cls, txt;
+  if (bad) { cls = 'bad'; txt = `⚠ มีปัญหา ${bad} รายการ`; }
+  else if (waiting) { cls = 'q'; txt = `⏳ รอส่ง ${waiting} รายการ`; }
+  else if (!S.online) { cls = 'off'; txt = 'ออฟไลน์'; }
+  else { cls = 'on'; txt = S.syncing ? 'กำลังซิงก์…' : 'ออนไลน์'; }
+  el.className = 'pill ' + cls;
+  el.innerHTML = `<span class="dot"></span>${txt}`;
+  el.title = 'ซิงก์ล่าสุด ' + fmtClock(S.lastSync) + ' — กดเพื่อดูรายละเอียด';
+}
+
+/** หน้าต่างคิวรอส่ง: ดู/ลองใหม่/ทิ้ง */
+function openQueuePanel() {
+  const label = q => {
+    const r = q.record || getRec(q.sheet, q.id) || {};
+    return `${esc({create:'สร้าง',update:'แก้ไข',remove:'ลบ'}[q.action])} ${esc(q.sheet)} — ${esc(r.sampleNo || r.animalName || r.animalId || r.item || q.id.slice(0, 8))}`;
+  };
+  const html = `<h2>สถานะการส่งข้อมูล</h2>
+    <p class="muted small">${S.online ? 'ออนไลน์' : 'ออฟไลน์'} · ซิงก์ล่าสุด ${fmtClock(S.lastSync)} · ข้อมูลในเครื่อง ${rows('Cases').length} เคส</p>
+    ${S.queue.length ? `<table class="tbl"><tbody>${S.queue.map(q => `<tr><td>${label(q)}<div class="small ${q.error ? '' : 'muted'}" style="${q.error ? 'color:var(--err)' : ''}">${q.error ? esc(q.message) : 'รอส่ง · ' + fmtTime(new Date(q.at).toISOString())}</div></td>
+      <td class="n" style="white-space:nowrap">${q.error ? `<button class="btn" data-retry="${q.qid}">${q.error === 'duplicate' ? 'ยืนยันสร้างซ้ำ' : 'ลองใหม่'}</button> ` : ''}<button class="btn danger" data-drop="${q.qid}">ทิ้ง</button></td></tr>`).join('')}</tbody></table>`
+      : '<div class="alert ok">ส่งข้อมูลครบแล้ว ไม่มีรายการค้าง</div>'}
+    <div class="acts"><button class="btn" data-v="sync">ซิงก์ตอนนี้</button><button class="btn pri" data-v="null">ปิด</button></div>`;
+  modal(html, { onMount(box, close) {
+    box.addEventListener('click', async e => {
+      const rt = e.target.closest('[data-retry]'), dp = e.target.closest('[data-drop]');
+      if (rt) { const q = S.queue.find(x => x.qid === rt.dataset.retry); if (q) { if (q.error === 'duplicate') q.force = true; q.error = null; q.message = ''; saveQueue(); } close(null); await flushQueue(); openQueuePanel(); }
+      if (dp) {
+        const q = S.queue.find(x => x.qid === dp.dataset.drop); if (!q) return;
+        if (!await confirmBox('ทิ้งรายการนี้?', 'ข้อมูลที่ยังไม่ได้ส่งของรายการนี้จะหายไป')) return;
+        dropQ(q);
+        if (q.action === 'create') S.data[q.sheet] = S.data[q.sheet].filter(r => r.id !== q.id);
+        close(null); sync(true);
+      }
+    });
+  } }).then(v => { if (v === 'sync') sync(); });
+}
+
+/* =====================================================================
+ * 7) Conflict — ห้ามเขียนทับเงียบ ๆ: ให้ผู้ใช้เลือกทีละช่อง
+ * ===================================================================== */
+function openConflict(q, server) {
+  S.conflicts.push({ q, server });
+  if (S.conflicts.length === 1) nextConflict();
+}
+function nextConflict() {
+  const c = S.conflicts[0]; if (!c) return;
+  const { q, server } = c;
+  const mine = q.changes || {};
+  const keys = Object.keys(mine).filter(k => String(mine[k] ?? '') !== String(server[k] ?? ''));
+  const done = () => { S.conflicts.shift(); refreshView(true); nextConflict(); };
+  if (!keys.length || isDel(server)) {
+    toast(isDel(server) ? 'ข้อมูลนี้ถูกลบโดยคนอื่นแล้ว' : 'ข้อมูลของคุณตรงกับฉบับล่าสุดอยู่แล้ว', 'info');
+    return done();
+  }
+  const html = `<h2>⚠ ข้อมูลถูกแก้โดยคนอื่น</h2>
+    <p><b>${esc(server.sampleNo || server.animalName || '')}</b> ถูกแก้โดย <b>${esc(server.updatedBy)}</b> เมื่อ ${fmtTime(server.updatedAt)} ระหว่างที่คุณกำลังแก้
+    — เลือกว่าจะใช้ค่าไหนในแต่ละช่อง</p>
+    <div class="tblwrap"><table class="tbl diff"><thead><tr><th>ช่อง</th><th>ของคุณ</th><th>ล่าสุดในระบบ (${esc(server.updatedBy)})</th></tr></thead><tbody>
+    ${keys.map(k => `<tr><td><b>${esc(fieldLabel(k))}</b></td>
+      <td class="mine"><label><input type="radio" name="${esc(k)}" value="mine"> <span>${esc(mine[k]) || '<i class=muted>(ว่าง)</i>'}</span></label></td>
+      <td class="srv"><label><input type="radio" name="${esc(k)}" value="server" checked> <span>${esc(server[k]) || '<i class=muted>(ว่าง)</i>'}</span></label></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="acts"><button class="btn" data-v="server">ใช้ของระบบทั้งหมด</button><button class="btn pri" data-v="pick" data-collect="1">บันทึกตามที่เลือก</button></div>`;
+  modal(html, { wide: true }).then(async v => {
+    if (v && typeof v === 'object') {
+      const ch = {}; keys.forEach(k => { if (v[k] === 'mine') ch[k] = mine[k]; });
+      if (Object.keys(ch).length) {
+        enqueue({ action: 'update', sheet: q.sheet, id: q.id, version: server.version, changes: ch });
+        Object.assign(getRec(q.sheet, q.id), ch, { _pending: true });
+        flushQueue();
+        toast('กำลังบันทึกค่าที่เลือก', 'info');
+      }
+    } else toast('ใช้ข้อมูลล่าสุดในระบบ', 'info');
+    done();
+  });
+}
+
+/* =====================================================================
+ * 8) ตัวสร้างฟอร์ม — ใช้ร่วมกันทุกหน้า (ลงทะเบียน, ข้อมูลสัตว์, แท็บผลแลป)
+ *    type: text | num | area | select | chips (เลือก 1) | multi (เลือกหลายอัน) | day | unit
+ * ===================================================================== */
+const FIELDS = {
+  head: [
+    { k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' },
+    { k:'unit', label:'หน่วย', type:'unit', req:true, w:'l' },
+    { k:'queueNo', label:'ลำดับที่', type:'num', im:'numeric' },
+    { k:'group', label:'กลุ่มที่', type:'group', w:'full' }
+  ],
+  owner: [
+    { k:'ownerName', label:'ชื่อ-สกุลเจ้าของ', type:'text', w:'l' },
+    { k:'houseNo', label:'บ้านเลขที่', type:'text' },
+    { k:'moo', label:'หมู่ที่', type:'text', im:'numeric' },
+    { k:'subdistrict', label:'ตำบล', type:'text' },
+    { k:'district', label:'อำเภอ', type:'text' },
+    { k:'province', label:'จังหวัด', type:'text' },
+    { k:'coordE', label:'พิกัด E (ลองจิจูด)', type:'num' },
+    { k:'coordN', label:'พิกัด N (ละติจูด)', type:'num' }
+  ],
+  SA: [
+    { k:'animalName', label:'ชื่อสัตว์', type:'text' },
+    { k:'species', label:'Species', type:'chips', list:'species_SA', req:true },
+    { k:'breed', label:'Breed', type:'text' },
+    { k:'animalId', label:'เลขประจำตัวสัตว์', type:'text' },
+    { k:'sex', label:'เพศ', type:'chips', opts:['ผู้','เมีย'] },
+    { k:'neutered', label:'ทำหมันแล้ว?', type:'chips', opts:['ใช่','ไม่ใช่'] },
+    { k:'age', label:'อายุ', type:'num' },
+    { k:'ageUnit', label:'หน่วยอายุ', type:'chips', opts:['เดือน','ปี'] },
+    { k:'housing', label:'รูปแบบการเลี้ยง', type:'chips', list:'housing', w:'full' },
+    { k:'petCount', label:'จำนวนที่เลี้ยง (ตัว)', type:'num', im:'numeric' },
+    { k:'vaccine', label:'ประวัติวัคซีน', type:'chips', list:'vaccine', w:'full' },
+    { k:'otherSigns', label:'อาการผิดปกติอื่น ๆ', type:'area', w:'full' }
+  ],
+  LA: [
+    { k:'farmName', label:'ชื่อฟาร์ม', type:'text', w:'l' },
+    { k:'farmNo', label:'ฟาร์มที่', type:'text', im:'numeric' },
+    { k:'species', label:'ชนิดสัตว์', type:'chips', list:'species_LA', req:true, w:'full' },
+    { k:'animalId', label:'Ear tag / ห่วงทองเหลือง', type:'text' },
+    { k:'animalName', label:'ชื่อสัตว์', type:'text' },
+    { k:'animalType', label:'ประเภทสัตว์', type:'chips', list:'animalType_LA', w:'full' },
+    { k:'sex', label:'เพศ', type:'chips', opts:['ผู้','เมีย'] },
+    { k:'age', label:'อายุ', type:'num' },
+    { k:'ageUnit', label:'หน่วยอายุ', type:'chips', opts:['เดือน','ปี'] },
+    { k:'breed', label:'สายพันธุ์', type:'text' },
+    { k:'colorMarks', label:'สี/ตำหนิ', type:'text', w:'l' },
+    { k:'physicalExam', label:'Physical examination', type:'area', w:'full' }
+  ],
+  sample: [
+    { k:'sampleTypes', label:'ชนิดตัวอย่าง', type:'multi', list:'sampleTypes', w:'full' },
+    { k:'procedure', label:'Procedure', type:'text', w:'l' },
+    { k:'sampleAmount', label:'ปริมาณตัวอย่าง', type:'text' },
+    { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' },
+    { k:'recorder', label:'ผู้บันทึก', type:'text', req:true, dl:'members' },
+    { k:'refNo', label:'เลขอ้างอิง AppSheet / Doctor Dog (ถ้ามี)', type:'text' }
+  ]
+};
+const EXTRA_LABELS = { status:'สถานะ', returnReason:'เหตุผลส่งกลับแก้ไข', animalGroup:'กลุ่มสัตว์', date:'วันที่', verifiedBy:'ผู้ตรวจสอบ' };
+function fieldLabel(k) {
+  if (typeof SECTIONS !== 'undefined') for (const g of Object.values(SECTIONS)) for (const fs of Object.values(g)) { const f = fs.find(x => x.k === k); if (f) return f.label; }
+  if (typeof PATHO !== 'undefined') { const p = PATHO.find(x => x.k === k); if (p) return p.name; }
+  for (const g of Object.values(FIELDS)) { const f = g.find(x => x.k === k); if (f) return f.label; }
+  return EXTRA_LABELS[k] || k;
+}
+const optsOf = f => f.opts || S.lists[f.list] || [];
+
+function fieldHTML(f, val, ro) {
+  const id = 'f_' + f.k, dis = ro ? 'disabled' : '';
+  const lab = `<label for="${id}">${esc(f.label)}${f.req ? '<span class="req" aria-hidden="true">*</span>' : ''}</label>`;
+  const wrap = inner => `<div class="fld ${f.w || ''}" data-k="${f.k}">${inner}</div>`;
+  const chipSet = (opts, multi) => {
+    const sel = multi ? splitMulti(val) : [String(val ?? '')];
+    const extra = sel.filter(v => v && !opts.includes(v)); // ค่าที่ไม่มีในรายการ (เช่น ตั้งค่าเปลี่ยน) ยังแสดงอยู่
+    return `<div class="lab" id="${id}">${esc(f.label)}${f.req ? '<span class="req">*</span>' : ''}</div>
+      <div class="chips" role="group" aria-labelledby="${id}" data-chips="${f.k}" data-single="${multi ? '' : '1'}">
+      ${opts.concat(extra).map(o => `<label class="chip"><input type="checkbox" value="${esc(o)}" ${sel.includes(o) ? 'checked' : ''} ${dis}><span>${esc(o)}</span></label>`).join('')}</div>`;
+  };
+  switch (f.type) {
+    case 'text': case 'num':
+      return wrap(`${lab}<input id="${id}" name="${f.k}" type="text" ${f.type === 'num' || f.im ? `inputmode="${f.im || 'decimal'}"` : ''} value="${esc(val)}" ${dis} autocomplete="off" ${f.dl ? `list="dl_${f.dl}"` : ''}>`);
+    case 'group': return wrap(chipSet(groupList(), false));
+    case 'area':
+      return wrap(`${lab}<textarea id="${id}" name="${f.k}" ${dis}>${esc(val)}</textarea>`);
+    case 'select':
+      return wrap(`${lab}<select id="${id}" name="${f.k}" ${dis}><option value="">— เลือก —</option>${optsOf(f).map(o => `<option ${String(val) === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`);
+    case 'chips': return wrap(chipSet(optsOf(f), false));
+    case 'multi': return wrap(chipSet(optsOf(f), true));
+    case 'day':
+      return wrap(`<div class="lab" id="${id}">${esc(f.label)}${f.req ? '<span class="req">*</span>' : ''}</div>
+        <div class="chips" role="group" aria-labelledby="${id}" data-chips="${f.k}" data-single="1">
+        ${campDays().map(d => `<label class="chip"><input type="checkbox" value="${d}" ${Number(val) === d ? 'checked' : ''} ${dis}><span>Day ${d}${S.campDates[d] ? ' <small>(' + esc(S.campDates[d].slice(5)) + ')</small>' : ''}</span></label>`).join('')}</div>`);
+    case 'unit': {
+      const locked = ro;
+      return wrap(`${lab}<select id="${id}" name="${f.k}" ${locked ? 'disabled' : ''}>${!val ? '<option value="">— เลือก —</option>' : ''}${S.units.map(u => `<option value="${esc(u.code)}" ${u.code === val ? 'selected' : ''}>${esc(u.code)} — ${esc(u.name)}</option>`).join('')}</select>`);
+    }
+  }
+  return '';
+}
+function formHTML(fields, rec, ro) { return `<div class="grid">${fields.map(f => fieldHTML(f, rec ? rec[f.k] : '', ro)).join('')}</div>`; }
+
+/** อ่านค่าจากฟอร์ม (เฉพาะ field ที่ส่งมา) */
+function readForm(root, fields) {
+  const o = {};
+  fields.forEach(f => {
+    const box = $(`[data-chips="${f.k}"]`, root);
+    if (box) {
+      const v = $$('input:checked', box).map(i => i.value);
+      o[f.k] = f.type === 'multi' ? v.join('; ') : (f.type === 'day' ? (v[0] ? Number(v[0]) : '') : (v[0] || ''));
+      return;
+    }
+    const el = $(`[name="${f.k}"]`, root);
+    if (!el) return;
+    let v = el.value.trim();
+    if (f.type === 'num' && v !== '') { const n = Number(v.replace(/,/g, '')); v = isFinite(n) ? n : v; }
+    o[f.k] = v;
+  });
+  return o;
+}
+/** ตรวจช่องบังคับ + ตัวเลข → คืนรายการ error */
+function validateForm(root, fields, vals) {
+  $$('.fld.invalid', root).forEach(e => { e.classList.remove('invalid'); const m = $('.err-msg', e); if (m) m.remove(); });
+  const errs = [];
+  fields.forEach(f => {
+    let msg = '';
+    if (f.req && (vals[f.k] === '' || vals[f.k] == null)) msg = 'จำเป็นต้องกรอก';
+    else if (f.type === 'num' && vals[f.k] !== '' && typeof vals[f.k] !== 'number') msg = 'ต้องเป็นตัวเลข';
+    if (msg) {
+      errs.push(f.label + ': ' + msg);
+      const el = $(`.fld[data-k="${f.k}"]`, root);
+      if (el) { el.classList.add('invalid'); el.insertAdjacentHTML('beforeend', `<div class="err-msg">${msg}</div>`); }
+    }
+  });
+  if (errs.length) { const first = $('.fld.invalid', root); if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  return errs;
+}
+/** chip แบบเลือกได้อันเดียว: เลือกอันใหม่ → ยกเลิกอันอื่น (กดซ้ำ = ยกเลิก) */
+document.addEventListener('change', e => {
+  const box = e.target.closest('[data-chips][data-single="1"]');
+  if (box && e.target.checked) $$('input', box).forEach(i => { if (i !== e.target) i.checked = false; });
+});
+
+/* =====================================================================
+ * 9) Shell: header + เมนูข้าง (จอใหญ่) / เมนูล่าง (มือถือ) + router
+ * ===================================================================== */
+const NAV = [
+  { r:'lab', ic:'🧪', t:'ผลแลปวันนี้' },
+  { r:'new', ic:'＋', t:'รับตัวอย่าง' },
+  { r:'search', ic:'🔍', t:'ค้นหาสัตว์ / ประวัติตรวจ' },
+  { r:'cattle', ic:'🐄', t:'Blood parasite โค (ความชุก)' },
+  { sec:'ห้องแลป' },
+  { r:'kits', ic:'🧰', t:'เบิก/คืน Test kit' },
+  { r:'booking', ic:'📅', t:'จองห้องแลป' },
+  { r:'dashboard', ic:'📋', t:'ภาพรวม / สถานะตรวจสอบ' },
+  { sec:'Lab-path', staff:true },
+  { r:'reports', ic:'📊', t:'รายงาน / Export', staff:true },
+  { r:'settings', ic:'⚙️', t:'ตั้งค่า', admin:true }
+];
+function renderShell() {
+  const s = S.session;
+  const navItems = NAV.filter(n => (!n.staff || isStaff()) && (!n.admin || s.role === 'admin'));
+  $('#app').innerHTML = `
+  <header class="top">
+    <div class="logo"><span class="mark">LAB</span><span><span class="full">${esc(APP_NAME)}</span><span class="short">LabPath</span></span></div>
+    <div class="sp"></div>
+    <button id="connPill" class="pill on" aria-label="สถานะการเชื่อมต่อ"></button>
+    <div class="userchip"><b>${esc(s.user)}</b>${s.group ? 'กลุ่ม ' + esc(s.group) : 'ไม่สังกัดกลุ่ม'} · ${ROLE_TH[s.role]}</div>
+    <button class="iconbtn" id="helpBtn" aria-label="คู่มือ" title="คู่มือ">❓</button>
+  </header>
+  <div class="scrim" id="scrim"></div>
+  <nav class="side" id="side" aria-label="เมนูหลัก">
+    ${navItems.map(n => n.sec ? `<div class="sec">${esc(n.sec)}</div>` : `<a href="#/${n.r}" data-r="${n.r}"><span class="ic">${n.ic}</span>${esc(n.t)}</a>`).join('')}
+    <div class="sec">บัญชี</div>
+    <a href="#" id="helpLink"><span class="ic">📖</span>คู่มือการใช้งาน</a>
+    <a href="#" id="logoutLink"><span class="ic">↩</span>ออกจากระบบ / เปลี่ยนผู้ใช้</a>
+    <div class="small muted" style="padding:8px 12px">${esc(s.user)} · ${s.group ? 'กลุ่ม ' + esc(s.group) : 'ไม่สังกัดกลุ่ม'} · ${ROLE_TH[s.role]}</div>
+  </nav>
+  <main id="view" tabindex="-1"></main>
+  <nav class="bottom" aria-label="เมนูลัด">
+    <a href="#/lab" data-r="lab"><span class="ic">🧪</span>ผลแลป</a>
+    <a href="#/search" data-r="search"><span class="ic">🔍</span>ค้นหา</a>
+    <a href="#/new" data-r="new" class="plus"><span class="ic">＋</span>รับตัวอย่าง</a>
+    <a href="#/cattle" data-r="cattle"><span class="ic">🐄</span>BP โค</a>
+    <button id="moreBtn"><span class="ic">☰</span>เมนู</button>
+  </nav>
+  <datalist id="dl_members">${S.members.map(m => `<option value="${esc(m.name)}">กลุ่ม ${esc(m.group)}</option>`).join('')}</datalist>`;
+  const openMenu = v => { $('#side').classList.toggle('open', v); $('#scrim').classList.toggle('open', v); };
+  $('#moreBtn').onclick = () => openMenu(true);
+  $('#scrim').onclick = () => openMenu(false);
+  $('#side').addEventListener('click', e => { if (e.target.closest('a')) openMenu(false); });
+  $('#connPill').onclick = openQueuePanel;
+  $('#helpBtn').onclick = $('#helpLink').onclick = e => { e.preventDefault(); showGuide(); };
+  $('#logoutLink').onclick = async e => {
+    e.preventDefault();
+    const n = S.queue.length;
+    if (n && !await confirmBox('ยังมีข้อมูลรอส่ง ' + n + ' รายการ', 'ข้อมูลจะยังอยู่ในเครื่องนี้และส่งต่อเมื่อเข้าใช้งานอีกครั้ง ต้องการออกจากระบบหรือไม่?', 'ออกจากระบบ')) return;
+    logout();
+  };
+  renderStatus();
+}
+
+let currentView = null;
+function route() {
+  if (!S.session) return renderLogin();
+  if (!$('#view')) renderShell();
+  const parts = (location.hash || '#/lab').replace(/^#\/?/, '').split('/');
+  const name = parts[0] || 'lab';
+  $$('nav [data-r]').forEach(a => a.classList.toggle('act', a.dataset.r === name));
+  const v = VIEWS[name] || VIEWS.lab;
+  currentView = { name, args: parts.slice(1), refresh: null };
+  $('#view').innerHTML = '';
+  v($('#view'), ...parts.slice(1).map(decodeURIComponent));
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', route);
+/** ข้อมูลเปลี่ยน → ให้หน้าปัจจุบันวาดใหม่ (ถ้าหน้านั้นรองรับ และไม่มีฟอร์มที่กำลังพิมพ์ค้าง) */
+function refreshView(fromRemote) { if (currentView && currentView.refresh) currentView.refresh(fromRemote); }
+const go = h => { if (location.hash === h) route(); else location.hash = h; };
+
+/* =====================================================================
+ * 10) หน้าเข้าใช้งาน (ชื่อ + PIN → เลือกหน่วย + กลุ่ม)
+ * ===================================================================== */
+/* ---------------------------------------------------------------------
+ * เข้าใช้งาน 2 ขั้น
+ *   1) PIN ค่าย (เครื่องจำไว้ได้)
+ *   2) เลือก "ชื่อ" (จากรายชื่อค่ายถ้ามี) + "หน่วย" → ส่ง checkin ให้เซิร์ฟเวอร์บันทึกลง AuditLog
+ * การเข้าใช้งานหมดอายุทุกวัน → ทุกเช้าต้องยืนยันชื่อและหน่วยใหม่ (หลักฐานว่าใครทำงานหน่วยไหน)
+ * ------------------------------------------------------------------- */
+const normName = x => String(x || '').replace(/\s+/g, '').replace(/^(นางสาว|นาย|นาง|น\.ส\.)/, '');
+/** ชื่อต้น (ตัดคำนำหน้า + นามสกุล) — ใช้จับคู่ตอนเข้าใช้งาน */
+const firstName = x => String(x || '').trim().replace(/^(นางสาว|นาย|นาง|น\.ส\.)\s*/, '').split(/\s+/)[0] || '';
+const deviceInfo = () => {
+  const ua = navigator.userAgent;
+  return (/iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows' : 'อื่น ๆ') +
+    ' · ' + (window.innerWidth < 900 ? 'มือถือ' : 'จอใหญ่');
+};
+
+function renderLogin(msg) {
+  const last = store.get('lastLogin', {});
+  const savedPin = store.get('pin', '');
+  $('#app').innerHTML = `
+  <div class="login"><div class="box">
+    <div class="login-hd"><span class="mark">LAB</span><div><h1>${esc(APP_NAME)}</h1><div class="small muted">ระบบบันทึกผลแลป · คณะสัตวแพทยศาสตร์ จุฬาฯ</div></div></div>
+    ${msg ? `<div class="alert warn">${esc(msg)}</div>` : ''}
+    ${!(window.__LP_API_URL || API_URL) ? '<div class="alert err">ผู้ดูแลยังไม่ได้ใส่ <b>API_URL</b> ในไฟล์ index.html</div>' : ''}
+    <ol class="lsteps"><li class="on" id="ls1">1 รหัสค่าย</li><li id="ls2">2 ชื่อ + กลุ่ม</li></ol>
+    <form id="step1" autocomplete="on">
+      <div class="fld" style="margin-bottom:14px"><label for="lgPin">รหัสค่าย (PIN)<span class="req">*</span></label>
+        <input id="lgPin" name="pin" type="password" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="current-password" value="${esc(savedPin)}" required></div>
+      <div id="lgErr"></div>
+      <button class="btn pri big block" type="submit">ถัดไป</button>
+    </form>
+    <form id="step2" class="hidden" autocomplete="off">
+      <div class="fld" style="margin-bottom:8px"><label for="lgName">ชื่อของคุณ (ไม่ต้องใส่นามสกุล)<span class="req">*</span></label>
+        <input id="lgName" type="text" value="${esc(firstName(last.user || ''))}" placeholder="เช่น อารัทธ์" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+      <div id="lgMatch" class="lgmatch"></div>
+      <div class="fld" style="margin:10px 0 14px"><div class="lab">กลุ่ม (ล็อกตามรายชื่อค่าย)</div><div id="lgGroupShow" class="grpshow muted">— พิมพ์ชื่อก่อน —</div></div>
+      <div class="alert info small">ชื่อนี้จะถูกบันทึกเป็น "ผู้บันทึก/ผู้แก้ไข" ในทุกข้อมูลที่คุณเพิ่มหรือแก้ และระบบเก็บประวัติการเข้าใช้งานไว้</div>
+      <div id="lgErr2"></div>
+      <button class="btn pri big block" type="submit">เข้าใช้งาน</button>
+      <button class="btn block" type="button" id="lgBack" style="margin-top:8px">ย้อนกลับ</button>
+    </form>
+  </div></div>`;
+  let pending = null, picked = null;
+  /** หาคนในรายชื่อจากสิ่งที่พิมพ์: ชื่อเต็มตรง → ชื่อต้นตรง → ชื่อที่ขึ้นต้นด้วยที่พิมพ์ (แนะนำ) */
+  const findMembers = v => {
+    const full = S.members.filter(m => normName(m.name) === normName(v));
+    if (full.length) return { exact: full };
+    const first = S.members.filter(m => firstName(m.name) === firstName(v));
+    if (first.length) return { exact: first };
+    const fv = firstName(v);
+    return { suggest: fv.length >= 1 ? S.members.filter(m => firstName(m.name).startsWith(fv)).slice(0, 8) : [] };
+  };
+  const toStep2 = role => {
+    $('#step1').classList.add('hidden'); $('#step2').classList.remove('hidden');
+    $('#ls1').classList.remove('on'); $('#ls2').classList.add('on');
+    const showGroup = () => {
+      const el = $('#lgGroupShow');
+      if (picked) { el.className = 'grpshow'; el.innerHTML = `🔒 <b>กลุ่ม ${esc(picked.group)}</b> <span class="small muted">— ${esc(picked.name)}</span>`; }
+      else if (role !== 'member' && $('#lgName').value.trim()) { el.className = 'grpshow muted'; el.textContent = 'ไม่สังกัดกลุ่ม (ไม่อยู่ในรายชื่อนิสิต — Lab-path/อาจารย์ใช้ได้)'; }
+      else { el.className = 'grpshow muted'; el.textContent = '— พิมพ์ชื่อก่อน —'; }
+    };
+    const check = () => {
+      const v = $('#lgName').value.trim(); picked = null;
+      const box = $('#lgMatch');
+      if (!v || !S.members.length) { box.innerHTML = ''; showGroup(); return; }
+      const r = findMembers(v);
+      const list = r.exact || r.suggest;
+      if (r.exact && r.exact.length === 1) picked = r.exact[0];
+      box.innerHTML = picked ? '' :
+        list.length ? `<div class="small muted">${r.exact ? 'ชื่อนี้มีหลายคน — แตะเลือกตัวเอง' : 'หมายถึง…'}</div>` +
+          list.map(m => `<button type="button" class="btn" data-pick="${esc(m.name)}">${esc(m.name)} <span class="muted">· กลุ่ม ${esc(m.group)}</span></button>`).join('')
+        : `<div class="small" style="color:var(--err)">${role === 'member' ? 'ไม่พบชื่อนี้ในรายชื่อค่าย — ตรวจการสะกด หรือติดต่อฝ่าย Lab-path' : ''}</div>`;
+      $$('[data-pick]', box).forEach(b => b.onclick = () => { $('#lgName').value = b.dataset.pick; check(); });
+      showGroup();
+    };
+    $('#lgName').oninput = check; check();
+    setTimeout(() => $('#lgName').focus(), 30);
+  };
+  $('#step1').onsubmit = async e => {
+    e.preventDefault();
+    const pin = $('#lgPin').value.trim();
+    if (!pin) return;
+    const btn = $('#step1 button'); btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
+    try {
+      S.session = { user: '', pin, unit: '' };
+      const r = await api('login');
+      if (!r.ok) throw new Error(r.message || 'เข้าใช้งานไม่สำเร็จ');
+      applySettings(r.settings);
+      store.set('pin', pin);
+      pending = { pin, role: r.role };
+      toStep2(r.role);
+    } catch (err) {
+      store.del('pin');
+      $('#lgErr').innerHTML = `<div class="alert err">${esc(err.network ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — การเข้าใช้งานต้องมีอินเทอร์เน็ต' : err.message)}</div>`;
+    } finally { S.session = null; btn.disabled = false; btn.textContent = 'ถัดไป'; }
+  };
+  $('#lgBack').onclick = () => {
+    $('#step2').classList.add('hidden'); $('#step1').classList.remove('hidden');
+    $('#ls2').classList.remove('on'); $('#ls1').classList.add('on');
+  };
+  $('#step2').onsubmit = async e => {
+    e.preventDefault();
+    const typed = $('#lgName').value.trim().replace(/\s+/g, ' ');
+    if (typed.length < 2) return toast('กรุณากรอกชื่อ', 'warn');
+    if (pending.role === 'member' && S.members.length && !picked) return toast('ไม่พบชื่อในรายชื่อค่าย หรือชื่อซ้ำ — แตะเลือกชื่อจากรายการ', 'warn');
+    const btn = $('#step2 button[type=submit]'); btn.disabled = true; btn.textContent = 'กำลังเข้าใช้งาน…';
+    try {
+      // ส่งชื่อเต็มตามรายชื่อ · กลุ่มเซิร์ฟเวอร์เป็นผู้กำหนดจากรายชื่อ (หน้าเว็บเปลี่ยนเองไม่ได้)
+      S.session = { user: picked ? picked.name : typed, pin: pending.pin, unit: '', group: picked ? picked.group : '' };
+      const r = await api('checkin', { device: deviceInfo() });
+      if (!r.ok) throw new Error(r.message || 'เข้าใช้งานไม่สำเร็จ');
+      S.session = { user: r.user, pin: pending.pin, role: r.role, unit: '', group: r.group || '', day: todayStr(), at: Date.now() };
+      store.set('session', S.session);
+      store.set('lastLogin', { user: r.user });
+      startApp(true);
+      toast(`เข้าใช้งานในชื่อ ${r.user}${r.group ? ' · กลุ่ม ' + r.group : ''}`, 'ok');
+    } catch (err) {
+      S.session = null;
+      $('#lgErr2').innerHTML = `<div class="alert err">${esc(err.network ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — การเข้าใช้งานต้องมีอินเทอร์เน็ต' : err.message)}</div>`;
+    } finally { btn.disabled = false; btn.textContent = 'เข้าใช้งาน'; }
+  };
+  // หมดอายุรายวัน: มี PIN ในเครื่องแล้ว → ข้ามไปขั้นเลือกชื่อ + กลุ่มเลย
+  if (savedPin && msg && (window.__LP_API_URL || API_URL)) $('#step1').requestSubmit();
+}
+
+/** ปุ่มเลือกกลุ่ม 1–14 (Lab-path/Admin มีตัวเลือก "ไม่สังกัดกลุ่ม") */
+function groupChipsHTML(sel, allowNone) {
+  return groupList().map(x => `<label class="chip"><input type="radio" name="group" value="${x}" ${x === String(sel) ? 'checked' : ''}><span>กลุ่ม ${x}</span></label>`).join('') +
+    (allowNone ? `<label class="chip"><input type="radio" name="group" value="" ${sel === '' ? 'checked' : ''}><span>ไม่สังกัดกลุ่ม (Lab-path / ส่วนกลาง)</span></label>` : '');
+}
+/** หน่วยที่ใช้ล่าสุดในเครื่องนี้ — ใช้เป็นค่าตั้งต้นของช่อง "หน่วย" ในฟอร์ม (ไม่ใช่ตัวตนผู้ใช้) */
+const prefUnit = () => store.get('prefUnit', '');
+const setPrefUnit = u => { if (u) store.set('prefUnit', u); };
+
+/** เปลี่ยนกลุ่ม (ไม่ต้องเข้าใช้งานใหม่) — บันทึกลง AuditLog ด้วย */
+async function switchGroup() {
+  const s = S.session;
+  const v = await modal(`<h2>เปลี่ยนกลุ่ม</h2>
+    <p class="small muted">ข้อมูลที่บันทึกใหม่จะติดกลุ่มนี้ ผู้บันทึกยังเป็น <b>${esc(s.user)}</b> (ถ้าเป็นคนอื่นจะใช้เครื่องนี้ ให้กด "ออกจากระบบ" แทน)</p>
+    <div class="chips">${groupChipsHTML(s.group || '', isStaff())}</div>
+    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">บันทึก</button></div>`);
+  if (!v || typeof v !== 'object' || v.group === undefined) return;
+  if (!isStaff() && !v.group) return toast('กรุณาเลือกกลุ่ม', 'warn');
+  s.group = v.group;
+  store.set('session', s);
+  store.set('lastLogin', { user: s.user, group: s.group });
+  store.del('draft_new');
+  api('checkin', { device: deviceInfo() }).catch(() => {}); // บันทึกการเปลี่ยนกลุ่ม (ถ้าออฟไลน์ก็ข้าม)
+  renderShell(); route();
+  toast(s.group ? `ตอนนี้: กลุ่ม ${s.group}` : 'ไม่สังกัดกลุ่ม', 'info');
+}
+function logout(msg, keepPin) {
+  S.session = null; store.del('session');
+  if (!keepPin) store.del('pin');
+  clearInterval(pollTimer); clearInterval(retryTimer);
+  history.replaceState(null, '', location.pathname + location.search);
+  renderLogin(msg);
+}
+function startApp(fresh) {
+  renderShell();
+  route();
+  startPolling();
+  sync(fresh || !S.since);
+}
+
+/* =====================================================================
+ * 11) Dashboard วันนี้
+ * ===================================================================== */
+function caseItem(c) {
+  const name = c.animalGroup === 'LA'
+    ? [c.animalId, c.animalName].filter(Boolean).join(' · ') || '(ไม่มีชื่อ/ear tag)'
+    : c.animalName || '(ไม่มีชื่อ)';
+  const sub = [c.species, c.animalGroup === 'LA' ? c.farmName : '', c.ownerName, `${c.unit || ''}${c.group ? ' กลุ่ม ' + c.group : ''}`, 'Day ' + (c.campDay || '-')].filter(Boolean).join(' · ');
+  return `<a class="citem" href="#/case/${encodeURIComponent(c.id)}">
+    <div class="sn mono">${c.sampleNo ? esc(c.sampleNo) : '<span class="badge pend">รอเลข</span>'}</div>
+    <div class="main"><div class="nm">${esc(name)}</div><div class="sub">${esc(sub)}</div><div class="tchips">${testChips(c)}</div></div>
+    <div>${statusBadge(c.status)}${c._pending ? ' <span class="badge pend" title="ยังไม่ได้ส่งขึ้นเซิร์ฟเวอร์">⏳</span>' : ''}</div></a>`;
+}
+/** ป้ายการตรวจของเคส: ✓ มีผล (ชมพู = พบ/Positive), ○ ส่งตรวจแต่ยังไม่ลงผล */
+function testChips(c) {
+  const g = c.animalGroup === 'LA' ? 'LA' : 'SA', row = resultRow(c);
+  const ks = [...new Set(requestedTests(c).concat(testsFor(g).map(t => t.k).filter(k => hasData(g, k, row))))];
+  return ks.map(k => {
+    const t = TESTS.find(x => x.k === k), d = hasData(g, k, row), p = d && isPositive(g, k, row);
+    return `<span class="tchip ${d ? (p ? 'p' : 'd') : ''}">${d ? '✓' : '○'} ${esc(t.short)}</span>`;
+  }).join('');
+}
+function countBy(list) { const o = { all: list.length }; ST_ORDER.forEach(s => o[s] = list.filter(c => (c.status || ST.PENDING) === s).length); return o; }
+
+function VIEWS_dashboard(el) {
+  const draw = () => {
+    const day = S.viewDay || todayDay() || 1;
+    const cases = rows('Cases');
+    const dayCases = cases.filter(c => Number(c.campDay) === day);
+    const my = S.session.unit;
+    const mine = my ? dayCases.filter(c => c.unit === my) : dayCases;
+    const cnt = countBy(mine);
+    const quota = Number(S.cfg.quotaPerUnitPerDay) || 0;
+    const pct = quota ? Math.min(100, Math.round(cnt.all / quota * 100)) : 0;
+    const unitRows = S.units.map(u => ({ u, c: countBy(dayCases.filter(x => x.unit === u.code)) }));
+    const todo = isStaff()
+      ? cases.filter(c => c.status === ST.REVIEW)
+      : cases.filter(c => c.unit === my && c.status === ST.REVISE);
+    const recent = [...cases].sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))).slice(0, 10);
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h1 style="margin:0">ภาพรวม Day ${day} <span class="muted small">${esc(S.campDates[day] || '')}${todayDay() === day ? ' (วันนี้)' : ''}</span></h1>
+        <div class="chips">${campDays().map(d => `<label class="chip"><input type="checkbox" data-day="${d}" ${d === day ? 'checked' : ''}><span>Day ${d}</span></label>`).join('')}</div>
+      </div>
+      ${!todayDay() ? `<div class="alert info small">วันนี้ (${todayStr()}) ไม่ตรงกับวันค่ายในตั้งค่า — กำลังแสดง Day ${day}</div>` : ''}
+      <h2>${my ? 'หน่วย ' + esc(unitName(my)) : 'ทุกหน่วย'}</h2>
+      <div class="stats">
+        <a class="stat s-all" href="#/search/day=${day}${my ? '&unit=' + my : ''}"><div class="n">${cnt.all}</div><div class="t">เคสวันนี้</div></a>
+        ${ST_ORDER.map(s => `<a class="stat s-${ST_CLASS[s]}" href="#/search/day=${day}&status=${encodeURIComponent(s)}${my ? '&unit=' + my : ''}"><div class="n">${cnt[s]}</div><div class="t">${ST_ICON[s]} ${esc(s)}</div></a>`).join('')}
+      </div>
+      ${my && quota ? `<div class="card"><div class="row" style="justify-content:space-between"><b>โควตาตัวอย่างวันนี้</b><span class="mono">${cnt.all} / ${quota} — ${cnt.all > quota ? '<b style="color:var(--err)">เกินโควตา ' + (cnt.all - quota) + '</b>' : 'เหลือ ' + (quota - cnt.all)}</span></div>
+        <div class="bar ${cnt.all > quota ? 'over' : ''}" style="margin-top:8px" role="progressbar" aria-valuenow="${cnt.all}" aria-valuemax="${quota}"><i style="width:${pct}%"></i></div></div>` : ''}
+      ${todo.length ? `<div class="card"><h2>${isStaff() ? '◔ รอ Lab-path ตรวจสอบ' : '! เคสที่ต้องแก้ไข'} (${todo.length})</h2><div class="clist">${todo.slice(0, 20).map(caseItem).join('')}</div></div>` : ''}
+      <div class="card"><h2>แยกตามหน่วย — Day ${day}</h2><div class="tblwrap"><table class="tbl">
+        <thead><tr><th>หน่วย</th><th class="n">ทั้งหมด</th>${ST_ORDER.map(s => `<th class="n">${esc(s)}</th>`).join('')}${quota ? '<th class="n">โควตา</th>' : ''}</tr></thead>
+        <tbody>${unitRows.map(({ u, c }) => `<tr><td><b>${esc(u.code)}</b> ${esc(u.name)}</td><td class="n mono"><b>${c.all}</b></td>${ST_ORDER.map(s => `<td class="n mono">${c[s] || ''}</td>`).join('')}${quota ? `<td class="n mono">${c.all}/${quota}</td>` : ''}</tr>`).join('')}</tbody>
+      </table></div></div>
+      <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">อัปเดตล่าสุด</h2><a class="btn" href="#/new">＋ ลงทะเบียนเคสใหม่</a></div>
+        <div class="clist" style="margin-top:10px">${recent.length ? recent.map(caseItem).join('') : '<div class="empty">ยังไม่มีเคส — เริ่มจาก "ลงทะเบียนเคสใหม่"</div>'}</div>
+        <p class="small muted">ซิงก์ล่าสุด ${fmtClock(S.lastSync)}</p></div>`;
+    $$('[data-day]', el).forEach(i => i.onchange = () => { S.viewDay = Number(i.dataset.day); draw(); });
+  };
+  draw();
+  currentView.refresh = draw;
+};
+
+/* =====================================================================
+ * 12) ค้นหาเคส
+ * ===================================================================== */
+function VIEWS_search(el, qs) {
+  const p = Object.fromEntries(new URLSearchParams(qs || ''));
+  const st = Object.assign({ q: '', day: '', unit: '', status: '', grp: '', st: '' }, p);
+  el.innerHTML = `
+    <h1>ค้นหาสัตว์ / ประวัติการตรวจ</h1>
+    <div class="card">
+      <div class="fld" style="margin-bottom:10px"><label for="sq">ค้นหา: เลขตัวอย่าง, ชื่อสัตว์, ชื่อเจ้าของ, ฟาร์ม, ear tag</label>
+        <input id="sq" type="search" value="${esc(st.q)}" placeholder="พิมพ์อย่างน้อย 1 ตัวอักษร" autocomplete="off"></div>
+      <div class="grid">
+        <div class="fld"><label for="sday">วัน</label><select id="sday"><option value="">ทุกวัน</option>${campDays().map(d => `<option value="${d}" ${String(d) === st.day ? 'selected' : ''}>Day ${d}</option>`).join('')}</select></div>
+        <div class="fld"><label for="sunit">หน่วย</label><select id="sunit"><option value="">ทุกหน่วย</option>${S.units.map(u => `<option value="${esc(u.code)}" ${u.code === st.unit ? 'selected' : ''}>${esc(u.code)} — ${esc(u.name)}</option>`).join('')}</select></div>
+        <div class="fld"><label for="sstatus">สถานะ</label><select id="sstatus"><option value="">ทุกสถานะ</option>${ST_ORDER.map(s => `<option ${s === st.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+        <div class="fld"><label for="sgrp">ชนิดสัตว์</label><select id="sgrp"><option value="">ทั้งหมด</option><option value="SA" ${st.grp === 'SA' ? 'selected' : ''}>สัตว์เล็ก</option><option value="LA" ${st.grp === 'LA' ? 'selected' : ''}>สัตว์ใหญ่</option>
+          ${[...(S.lists.species_SA || []), ...(S.lists.species_LA || [])].map(s => `<option value="sp:${esc(s)}" ${st.grp === 'sp:' + s ? 'selected' : ''}>— ${esc(s)}</option>`).join('')}</select></div>
+        <div class="fld"><label for="sst">ชนิดตัวอย่าง</label><select id="sst"><option value="">ทั้งหมด</option>${(S.lists.sampleTypes || []).map(s => `<option ${s === st.st ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+      </div>
+    </div>
+    <div id="sres"></div>`;
+  const run = () => {
+    const q = $('#sq').value.trim().toLowerCase();
+    const f = { day: $('#sday').value, unit: $('#sunit').value, status: $('#sstatus').value, grp: $('#sgrp').value, st: $('#sst').value };
+    let list = rows('Cases').filter(c =>
+      (!f.day || String(c.campDay) === f.day) && (!f.unit || c.unit === f.unit) &&
+      (!f.status || (c.status || ST.PENDING) === f.status) &&
+      (!f.grp || (f.grp.startsWith('sp:') ? c.species === f.grp.slice(3) : c.animalGroup === f.grp)) &&
+      (!f.st || splitMulti(c.sampleTypes).includes(f.st)) &&
+      (!q || [c.sampleNo, c.animalName, c.ownerName, c.farmName, c.animalId].some(v => String(v || '').toLowerCase().includes(q))));
+    list.sort((a, b) => String(b.sampleNo || '~').localeCompare(String(a.sampleNo || '~'), 'th', { numeric: true }));
+    $('#sres').innerHTML = `<p class="muted">${list.length} เคส${list.length > 200 ? ' (แสดง 200 รายการแรก)' : ''}</p>
+      <div class="clist">${list.slice(0, 200).map(caseItem).join('') || '<div class="empty card">ไม่พบเคสที่ตรงเงื่อนไข</div>'}</div>`;
+  };
+  let t; $('#sq').oninput = () => { clearTimeout(t); t = setTimeout(run, 150); };
+  $$('select', el).forEach(s => s.onchange = run);
+  run();
+  currentView.refresh = run;
+};
+
+/* =====================================================================
+ * 13) ลงทะเบียนเคสใหม่ (ฟอร์มสั้น + draft อัตโนมัติ)
+ * ===================================================================== */
+function nextQueueNo(day, unit, group) {
+  const n = rows('Cases').filter(c => Number(c.campDay) === Number(day) && c.unit === unit && String(c.group || '') === String(group || ''))
+    .reduce((m, c) => Math.max(m, Number(c.queueNo) || 0), 0);
+  return n + 1;
+}
+function bindCaseForm(root, getState, setState) {
+  $$('[data-ag]', root).forEach(b => b.onclick = () => {
+    const st = getState();
+    const vals = readForm(root, caseFields(st.animalGroup || 'SA'));
+    if (vals.species && !(S.lists['species_' + b.dataset.ag] || []).includes(vals.species)) vals.species = '';
+    if (!vals.species && unitInfo(vals.unit || st.unit).group === b.dataset.ag) vals.species = unitInfo(vals.unit || st.unit).species || '';
+    setState(Object.assign(st, vals, { animalGroup: b.dataset.ag }));
+  });
+  const gps = $('#gpsBtn', root);
+  if (gps) gps.onclick = () => {
+    if (!navigator.geolocation) return toast('เครื่องนี้ไม่รองรับ GPS', 'err');
+    $('#gpsMsg').textContent = 'กำลังหาตำแหน่ง…';
+    navigator.geolocation.getCurrentPosition(p => {
+      $('[name=coordE]', root).value = p.coords.longitude.toFixed(6);
+      $('[name=coordN]', root).value = p.coords.latitude.toFixed(6);
+      $('#gpsMsg').textContent = `ความแม่นยำ ±${Math.round(p.coords.accuracy)} ม.`;
+      root.dispatchEvent(new Event('input', { bubbles: true }));
+    }, err => { $('#gpsMsg').textContent = ''; toast('หาตำแหน่งไม่ได้: ' + (err.code === 1 ? 'ไม่ได้อนุญาตให้ใช้ตำแหน่ง' : err.message), 'err'); },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 });
+  };
+}
+
+function VIEWS_new(el, mode, fromId) {
+  const s = S.session;
+  const blank = () => {
+    const day = todayDay() || S.viewDay || 1;
+    const pu = prefUnit(), u = unitInfo(pu);
+    return { animalGroup: u.group === 'LA' ? 'LA' : 'SA', species: u.species || '', campDay: day, unit: pu, group: s.group, recorder: s.user,
+      queueNo: pu ? nextQueueNo(day, pu, s.group) : '',
+      // ที่อยู่ตั้งต้นของพื้นที่ค่าย (แก้ได้ใน Settings: defaultSubdistrict / defaultDistrict / defaultProvince)
+      subdistrict: S.cfg.defaultSubdistrict || '', district: S.cfg.defaultDistrict || '', province: S.cfg.defaultProvince || '' };
+  };
+  let st = store.get('draft_new', null) || blank();
+  let restored = !!store.get('draft_new', null);
+  // "สร้างเคสต่อในบ้าน/ฟาร์มเดียวกัน" — คัดลอกข้อมูลเจ้าของ
+  if (mode === 'same' && fromId) {
+    const src = getRec('Cases', fromId);
+    if (src) {
+      st = blank();
+      ['campDay', 'unit', 'group', 'animalGroup', ...FIELDS.owner.map(f => f.k), 'farmName', 'farmNo'].forEach(k => st[k] = src[k] ?? '');
+      if (src.animalGroup === 'LA') { st.species = src.species; st.breed = src.breed; }
+      st.queueNo = nextQueueNo(st.campDay, st.unit, st.group);
+      st.recorder = s.user; restored = false;
+      history.replaceState(null, '', '#/new');
+    }
+  }
+  const draw = () => {
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between"><h1 style="margin:0">รับตัวอย่าง</h1>
+        <button class="btn" id="clearBtn" type="button">ล้างฟอร์ม</button></div>
+      <p class="muted small" style="margin-top:4px">ช่องที่มี <span class="req">*</span> จำเป็นต้องกรอก · ระบบออกเลขตัวอย่างให้อัตโนมัติ · ฟอร์มบันทึกร่างไว้ในเครื่องระหว่างพิมพ์</p>
+      ${restored ? '<div class="alert info small">กู้คืนฉบับร่างที่ยังไม่ได้บันทึก</div>' : ''}
+      <form id="newForm" novalidate>${caseFormHTML(st, false)}
+        <div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึก + ออกเลขตัวอย่าง</button></div>
+      </form>`;
+    const form = $('#newForm', el);
+    bindCaseForm(form, () => st, ns => { st = ns; store.set('draft_new', st); restored = false; draw(); });
+    form.addEventListener('input', () => { st = Object.assign(st, readForm(form, caseFields(st.animalGroup))); store.set('draft_new', st); });
+    form.addEventListener('change', () => { st = Object.assign(st, readForm(form, caseFields(st.animalGroup))); store.set('draft_new', st); });
+    $('#clearBtn', el).onclick = async () => { if (await confirmBox('ล้างฟอร์ม?', 'ข้อมูลที่กรอกไว้จะหายไป')) { store.del('draft_new'); st = blank(); restored = false; draw(); } };
+    form.onsubmit = async e => { e.preventDefault(); submit(form); };
+  };
+  const submit = async form => {
+    const fields = caseFields(st.animalGroup);
+    const vals = Object.assign(readForm(form, fields), { animalGroup: st.animalGroup });
+    if (!isStaff()) vals.group = s.group; // สมาชิก: ติดกลุ่มของผู้บันทึก (เซิร์ฟเวอร์บังคับซ้ำอีกชั้น)
+    setPrefUnit(vals.unit);
+    if (validateForm(form, fields, vals).length) return toast('กรุณากรอกช่องที่จำเป็นให้ครบ', 'err');
+    vals.date = S.campDates[vals.campDay] || todayStr();
+    // เตือนเคสซ้ำ (ชื่อสัตว์ + เจ้าของ + วันเดียวกัน)
+    let force = false;
+    const norm = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+    const dup = vals.animalName && vals.ownerName && rows('Cases').find(c => norm(c.animalName) === norm(vals.animalName) && norm(c.ownerName) === norm(vals.ownerName) && String(c.date) === vals.date);
+    if (dup) {
+      if (!await confirmBox('อาจเป็นเคสซ้ำ', `มีเคส <b>${esc(dup.animalName)}</b> ของ ${esc(dup.ownerName)} ในวันนี้แล้ว (${esc(dup.sampleNo || 'รอเลข')})<br>ต้องการลงทะเบียนเพิ่มอีกเคสหรือไม่?`, 'ลงทะเบียนเพิ่ม', 'warn')) return;
+      force = true;
+    }
+    const btn = $('button[type=submit]', form); btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+    const id = uuid();
+    let res = await saveRecord('Cases', id, vals, { isNew: true, force, silent: true });
+    if (res.error && res.error.error === 'duplicate') {
+      const ex = res.error.existing || {};
+      if (await confirmBox('มีเคสนี้ในระบบแล้ว', `เคส ${esc(ex.sampleNo || '')} ${esc(ex.animalName || '')} ของ ${esc(ex.ownerName || '')} ถูกลงทะเบียนโดย ${esc(ex.createdBy || '')}<br>ยืนยันลงทะเบียนเพิ่ม?`, 'ลงทะเบียนเพิ่ม', 'warn')) {
+        res.error.error = null; res.error.force = true; saveQueue();
+        await flushQueue(); res = { rec: getRec('Cases', id), sent: !S.queue.some(q => q.id === id) };
+      } else {
+        S.queue = S.queue.filter(q => q.id !== id); saveQueue();
+        S.data.Cases = S.data.Cases.filter(c => c.id !== id); saveCache();
+        btn.disabled = false; btn.textContent = '💾 บันทึก + ออกเลขตัวอย่าง';
+        if (ex.id) go('#/case/' + ex.id);
+        return;
+      }
+    } else if (res.error) {
+      toast('บันทึกไม่สำเร็จ: ' + res.error.message, 'err', 6000);
+      S.queue = S.queue.filter(q => q.id !== id); saveQueue();
+      S.data.Cases = S.data.Cases.filter(c => c.id !== id); saveCache();
+      btn.disabled = false; btn.textContent = '💾 บันทึก + ออกเลขตัวอย่าง';
+      return;
+    }
+    store.del('draft_new');
+    showCreated(el, res.rec, res.sent);
+  };
+  draw();
+};
+function showCreated(el, rec, sent) {
+  toast(sent ? 'บันทึกแล้ว' : 'บันทึกไว้ในเครื่อง รอส่ง', sent ? 'ok' : 'warn');
+  el.innerHTML = `<div class="card" style="text-align:center;max-width:560px;margin:20px auto">
+    <div class="muted">${sent ? '✅ ลงทะเบียนสำเร็จ — เขียนเลขนี้บนหลอด/ถุงตัวอย่าง' : '⏳ บันทึกไว้ในเครื่องแล้ว — จะได้เลขตัวอย่างเมื่อออนไลน์'}</div>
+    <div class="bigno mono" id="createdNo">${esc(rec.sampleNo || 'รอเลข')}</div>
+    <div><b>${esc(rec.animalName || rec.animalId || '')}</b> · ${esc(rec.species || '')} · ${esc(rec.ownerName || rec.farmName || '')}</div>
+    <div class="small muted">Day ${esc(rec.campDay)} · ${esc(rec.unit)}${rec.group ? ' กลุ่ม ' + esc(rec.group) : ''} · ลำดับ ${esc(rec.queueNo || '-')}</div>
+    <div style="display:grid;gap:8px;margin-top:16px">
+      <a class="btn pri big" href="#/case/${encodeURIComponent(rec.id)}">เปิดหน้าสัตว์ / ลงผลแลป</a>
+      <a class="btn big" href="#/new/same/${encodeURIComponent(rec.id)}">🏠 รับตัวอย่างตัวต่อไปใน${rec.animalGroup === 'LA' ? 'ฟาร์ม' : 'บ้าน'}เดียวกัน</a>
+      <a class="btn" href="#/new/fresh">＋ รับตัวอย่างใหม่ (ฟอร์มว่าง)</a>
+    </div></div>`;
+  // ถ้าตอนนี้ยังรอเลข → อัปเดตเลขบนจอเมื่อส่งสำเร็จ
+  currentView.refresh = () => { const r = getRec('Cases', rec.id); const n = $('#createdNo'); if (r && n && r.sampleNo) n.textContent = r.sampleNo; };
+}
+
+/* =====================================================================
+ * 13) การตรวจทางห้องปฏิบัติการ — นิยามชนิดการตรวจ + ฟอร์มผลแลป
+ * ===================================================================== */
+/** ชนิดการตรวจ (แท็บ) — la:true = ใช้กับสัตว์ใหญ่ด้วย */
+const TESTS = [
+  { k:'blood', label:'Blood (CBC)', short:'Blood', la:true, set:'blood_setting' },
+  { k:'bp', label:'Blood parasite', short:'Blood parasite', la:true, set:'bp_setting' },
+  { k:'feces', label:'Fecal exam', short:'Fecal', la:true, set:'fec_setting' },
+  { k:'cyto', label:'Cytology', short:'Cytology', la:true, set:'cyto_setting' },
+  { k:'urine', label:'Urinalysis', short:'Urine', set:'ur_setting' },
+  { k:'kit', label:'Test kit', short:'Test kit', set:'kit_setting' },
+  { k:'derm', label:'Derm (skin/ear)', short:'Derm', set:'derm_setting' },
+  { k:'ocular', label:'Ocular (STT/Fluorescein)', short:'Ocular', set:'oc_setting' },
+  { k:'vag', label:'Vaginal cytology', short:'Vaginal', set:'vag_setting' }
+];
+const testsFor = g => TESTS.filter(t => g !== 'LA' || t.la);
+const testByLabel = l => TESTS.find(t => t.label === l || t.short === l || t.k === l);
+/** ถ้าไม่ได้ระบุ "ส่งตรวจ" → เดาจากชนิดตัวอย่าง */
+const SAMPLE2TEST = { 'Blood':['blood','bp'], 'Fecal':['feces'], 'Urine':['urine'], 'Skin/Hair':['derm'], 'Ear swab':['derm'], 'FNA':['cyto'], 'Vaginal swab':['vag'] };
+function requestedTests(c) {
+  let ks = splitMulti(c.tests).map(testByLabel).filter(Boolean).map(t => t.k);
+  if (!ks.length) splitMulti(c.sampleTypes).forEach(s => (SAMPLE2TEST[s] || []).forEach(k => ks.push(k)));
+  return [...new Set(ks)];
+}
+
+const FL = { type:'chips', opts:['F','L'], label:'ทำที่ (F = ภาคสนาม, L = ห้องแลป)' };
+const KIT = { type:'chips', list:'kit_result' };
+const DIFF = [['neu','Neutrophils'],['lym','Lymphocytes'],['mono','Monocytes'],['eos','Eosinophils'],['baso','Basophils'],['band','Bands'],['blast','Blasts']]
+  .map(([k, l]) => ({ k, label: l + ' (%)', type:'num', diff:true }));
+const SECTIONS = {
+  SA: {
+    blood: [ { k:'blood_setting', ...FL },
+      { k:'hct', label:'Hct (%)', type:'num', ref:'hct' }, { k:'tp', label:'Total protein (g/dL)', type:'num', ref:'tp' },
+      { k:'rbc', label:'RBC (×10⁶/µL)', type:'num', ref:'rbc' }, { k:'wbc', label:'WBC (×10³/µL)', type:'num', ref:'wbc' },
+      ...DIFF,
+      { k:'poikilocyte', label:'Poikilocyte', type:'chips', list:'poikilocyte' }, { k:'poikilocyteType', label:'ชนิด Poikilocyte', type:'text' },
+      { k:'platelet', label:'Platelet (×10³/µL)', type:'num', ref:'plt' }, { k:'retic', label:'Reticulocyte count', type:'text' },
+      { k:'sat', label:'Saline agglutination (SAT)', type:'chips', opts:['Positive','Negative'] },
+      { k:'bloodChem', label:'Significant blood chemistry (BUN, Crea, Alb …)', type:'text', w:'full' },
+      { k:'cbcInterp', label:'CBC interpretation', type:'area', w:'full' }, { k:'chemInterp', label:'Blood chemistry interpretation', type:'area', w:'full' } ],
+    bp: [ { k:'bp_setting', ...FL }, { k:'bp_method', label:'Method', type:'multi', list:'bp_method_SA', w:'full' },
+      { k:'bp_result', label:'ผลที่พบ', type:'multi', list:'bp_result_SA', w:'full', pos:true }, { k:'bp_note', label:'หมายเหตุ / อื่น ๆ ระบุ', type:'area', w:'full' } ],
+    feces: [ { k:'fec_setting', ...FL }, { k:'fec_method', label:'Method', type:'multi', list:'fec_method', w:'full' },
+      { k:'fec_result', label:'ผลที่พบ', type:'multi', list:'fec_result_SA', w:'full', pos:true }, { k:'fec_epg', label:'EPG (McMaster)', type:'num' },
+      { k:'fec_note', label:'หมายเหตุ / อื่น ๆ ระบุ', type:'area', w:'full' } ],
+    cyto: [ { k:'cyto_setting', ...FL }, { k:'cyto_sampling', label:'Sampling', type:'chips', list:'cyto_sampling', w:'full' },
+      { k:'cyto_lesionType', label:'Type of lesion', type:'text' }, { k:'cyto_location', label:'Location of lesion', type:'text' },
+      { k:'cyto_stain', label:'Staining', type:'multi', list:'stain', w:'full' },
+      { k:'cyto_results', label:'Results (หลายรอยโรค เขียนเป็นข้อ 1., 2., 3.)', type:'area', w:'full' } ],
+    urine: [ { k:'ur_setting', ...FL }, { k:'ur_color', label:'Color', type:'text' }, { k:'ur_turbidity', label:'Turbidity', type:'chips', opts:['Clear','Slightly turbid','Turbid'] },
+      { k:'ur_usg', label:'USG', type:'num', ref:'usg' }, { k:'ur_strip', label:'Urine strip', type:'text', w:'l' },
+      { k:'ur_blood', label:'Sediment: RBC/occult blood (/HPF)', type:'text' }, { k:'ur_wbc', label:'Sediment: WBC (/HPF)', type:'text' },
+      { k:'ur_bacteria', label:'Bacteria', type:'chips', list:'ur_bacteria' }, { k:'ur_cast', label:'Cast (ชนิด)', type:'text' }, { k:'ur_crystal', label:'Crystal (ชนิด)', type:'text' },
+      { k:'ur_interp', label:'Interpretation', type:'area', w:'full' } ],
+    kit: [ { k:'kit_setting', ...FL },
+      { k:'kit_4dx_hw', label:'SNAP 4Dx Plus — Heartworm Ag', ...KIT }, { k:'kit_4dx_ana', label:'SNAP 4Dx Plus — Anaplasma Ab', ...KIT },
+      { k:'kit_4dx_ehr', label:'SNAP 4Dx Plus — Ehrlichia Ab', ...KIT }, { k:'kit_4dx_lyme', label:'SNAP 4Dx Plus — Lyme Ab', ...KIT },
+      { k:'kit_parvo', label:'SNAP Parvo', ...KIT }, { k:'kit_cdv', label:'CDV antigen test kit', ...KIT },
+      { k:'kit_fel_felv', label:'SNAP Feline Triple — FeLV Ag', ...KIT }, { k:'kit_fel_fiv', label:'SNAP Feline Triple — FIV Ab', ...KIT },
+      { k:'kit_fel_hw', label:'SNAP Feline Triple — Heartworm Ag', ...KIT }, { k:'kit_fpv', label:'PFCC FPV', ...KIT } ],
+    derm: [ { k:'derm_setting', ...FL }, { k:'derm_method', label:'วิธีเก็บตัวอย่าง', type:'multi', list:'derm_method', w:'full' },
+      { k:'derm_lesion', label:'Lesion', type:'text', w:'full' }, { k:'derm_results', label:'Results (เช่น Yeast 3+, Cocci 2+, Demodex)', type:'area', w:'full' } ],
+    ocular: [ { k:'oc_setting', ...FL }, { k:'oc_fluo_od', label:'Fluorescein OD', type:'chips', opts:['Positive','Negative'] },
+      { k:'oc_fluo_os', label:'Fluorescein OS', type:'chips', opts:['Positive','Negative'] },
+      { k:'oc_stt_od', label:'STT OD (มม.)', type:'num' }, { k:'oc_stt_os', label:'STT OS (มม.)', type:'num' },
+      { k:'oc_stt_time', label:'เวลา STT', type:'chips', opts:['30 s','60 s'] }, { k:'oc_interp', label:'Interpretation', type:'area', w:'full' } ],
+    vag: [ { k:'vag_setting', ...FL }, { k:'vag_cornified', label:'Cornified (%)', type:'num' }, { k:'vag_superficial', label:'Superficial (%)', type:'num' },
+      { k:'vag_intermediate', label:'Intermediate (%)', type:'num' }, { k:'vag_parabasal', label:'Parabasal (%)', type:'num' },
+      { k:'vag_rbc', label:'RBC', type:'text' }, { k:'vag_neutrophil', label:'Neutrophil', type:'text' },
+      { k:'vag_interp', label:'Interpretation', type:'chips', list:'vag_interp', w:'full' } ]
+  },
+  LA: {
+    blood: [ { k:'blood_setting', ...FL },
+      { k:'hct', label:'Hct (%)', type:'num', ref:'hct' }, { k:'tp', label:'TP (g/dL)', type:'num', ref:'tp' },
+      { k:'rbc', label:'RBC (×10⁶/µL)', type:'num', ref:'rbc' }, { k:'wbc', label:'WBC (×10³/µL)', type:'num', ref:'wbc' },
+      ...DIFF, { k:'poikilocyte', label:'Poikilocytes', type:'text' }, { k:'platelet', label:'Platelet (×10³/µL)', type:'num', ref:'plt' },
+      { k:'blood_interp', label:'Interpretation', type:'area', w:'full' } ],
+    bp: [ { k:'bp_setting', ...FL }, { k:'bp_method', label:'Methods', type:'multi', list:'bp_method_LA', w:'full' },
+      { k:'bp_result', label:'ผลที่พบ', type:'multi', list:'bp_result_LA', w:'full', pos:true }, { k:'bp_note', label:'หมายเหตุ', type:'area', w:'full' } ],
+    feces: [ { k:'fec_setting', ...FL }, { k:'fec_method', label:'Method', type:'multi', list:'fec_method', w:'full' },
+      { k:'fec_result', label:'ผลที่พบ', type:'multi', list:'fec_result_LA', w:'full', pos:true }, { k:'fec_epg', label:'Fecal egg count (EPG)', type:'num' },
+      { k:'fec_note', label:'หมายเหตุ', type:'area', w:'full' } ],
+    cyto: [ { k:'cyto_setting', ...FL }, { k:'cyto_lesionType', label:'Type of lesion', type:'text' }, { k:'cyto_location', label:'Location of lesion', type:'text' },
+      { k:'cyto_prep', label:'Preparation method', type:'text' }, { k:'cyto_stain', label:'Staining', type:'multi', list:'stain', w:'full' },
+      { k:'cyto_results', label:'Results', type:'area', w:'full' }, { k:'cyto_note', label:'หมายเหตุ', type:'area', w:'full' } ]
+  }
+};
+const RES_SHEET = g => g === 'LA' ? 'LA_Results' : 'SA_Results';
+const secFields = (g, k) => (SECTIONS[g === 'LA' ? 'LA' : 'SA'][k] || []);
+
+/** ค่าอ้างอิงโดยประมาณ (ใช้เตือน ↑↓ สีเหลือง ไม่บล็อกการบันทึก) — ปรับตามตำราที่ฝ่ายใช้ได้ */
+const REF = {
+  'สุนัข': { hct:[37,55], tp:[5.4,7.5], rbc:[5.5,8.5], wbc:[6,17], plt:[200,500], usg:[1.015,1.045] },
+  'แมว':  { hct:[30,45], tp:[6.0,8.0], rbc:[5,10], wbc:[5.5,19.5], plt:[300,800], usg:[1.035,1.060] },
+  'โค':   { hct:[24,46], tp:[7.0,8.5], rbc:[5,10], wbc:[4,12], plt:[100,800] }
+};
+const refFor = c => REF[c.species] || (c.animalGroup === 'LA' ? REF['โค'] : null);
+const HARD = { hct:[0,80], tp:[0,15], ur_usg:[1.000,1.080] }; // เกินช่วงนี้ = เป็นไปไม่ได้ → ห้ามบันทึก
+
+/** แถวผลแลปของเคส (1 แถว/เคส) */
+function resultRow(c) {
+  return rows(RES_SHEET(c.animalGroup)).filter(r => r.caseId === c.id)
+    .sort((a, b) => (Number(a.examNo) || 1) - (Number(b.examNo) || 1) || String(a.createdAt).localeCompare(String(b.createdAt)))[0] || null;
+}
+const filled = v => v !== '' && v !== null && v !== undefined;
+function hasData(g, sec, row) {
+  if (!row) return false;
+  const t = TESTS.find(x => x.k === sec);
+  return secFields(g, sec).some(f => f.k !== t.set && filled(row[f.k]));
+}
+function isPositive(g, sec, row) {
+  if (!row) return false;
+  const neg = v => !filled(v) || splitMulti(v).every(x => x === 'ไม่พบ');
+  if (sec === 'bp') return !neg(row.bp_result);
+  if (sec === 'feces') return !neg(row.fec_result);
+  if (sec === 'kit') return secFields(g, 'kit').some(f => row[f.k] === 'Positive');
+  if (sec === 'ocular') return row.oc_fluo_od === 'Positive' || row.oc_fluo_os === 'Positive';
+  if (sec === 'blood') return row.sat === 'Positive';
+  return false;
+}
+/** สรุปผลสั้น ๆ สำหรับตาราง */
+function summarize(g, sec, row, c) {
+  if (!hasData(g, sec, row)) return '';
+  const r = row, ref = c ? refFor(c) : null;
+  const num = (k, lab, unit, rk) => {
+    if (!filled(r[k])) return '';
+    let fl = '';
+    if (ref && rk && ref[rk]) fl = Number(r[k]) < ref[rk][0] ? ' ↓' : Number(r[k]) > ref[rk][1] ? ' ↑' : '';
+    return `${lab} ${r[k]}${unit}${fl}`;
+  };
+  const first = s => String(s || '').split('\n')[0];
+  switch (sec) {
+    case 'blood': return [num('hct', 'Hct', '%', 'hct'), num('tp', 'TP', '', 'tp'), num('wbc', 'WBC', '', 'wbc'), num('platelet', 'PLT', '', 'plt'),
+      filled(r.sat) ? 'SAT ' + r.sat : '', first(r.cbcInterp || r.blood_interp)].filter(Boolean).join(' · ');
+    case 'bp': return [r.bp_result || '(ยังไม่ระบุผล)', filled(r.bp_method) ? `<span class="muted">· ${esc(r.bp_method)}</span>` : ''].join(' ');
+    case 'feces': return [r.fec_result || '(ยังไม่ระบุผล)', filled(r.fec_epg) ? 'EPG ' + r.fec_epg : '', filled(r.fec_method) ? `<span class="muted">· ${esc(r.fec_method)}</span>` : ''].filter(Boolean).join(' · ');
+    case 'cyto': return [r.cyto_location, first(r.cyto_results)].filter(Boolean).join(': ');
+    case 'urine': return [num('ur_usg', 'USG', '', 'usg'), filled(r.ur_crystal) ? 'Crystal ' + r.ur_crystal : '', first(r.ur_interp)].filter(Boolean).join(' · ');
+    case 'kit': return secFields(g, 'kit').filter(f => f.k !== 'kit_setting' && filled(r[f.k]) && r[f.k] !== 'ไม่ได้ตรวจ')
+      .map(f => `${f.label.replace(/^SNAP /, '')}: ${r[f.k] === 'Positive' ? '<b class="pos">+</b>' : r[f.k] === 'Negative' ? '−' : r[f.k]}`).join(' · ');
+    case 'derm': return first(r.derm_results) || r.derm_lesion;
+    case 'ocular': return [filled(r.oc_fluo_od) || filled(r.oc_fluo_os) ? `Fluo OD ${r.oc_fluo_od || '-'} / OS ${r.oc_fluo_os || '-'}` : '',
+      filled(r.oc_stt_od) || filled(r.oc_stt_os) ? `STT ${r.oc_stt_od || '-'}/${r.oc_stt_os || '-'} มม.` : '', first(r.oc_interp)].filter(Boolean).join(' · ');
+    case 'vag': return [r.vag_interp, filled(r.vag_superficial) ? `Superficial ${r.vag_superficial}%` : ''].filter(Boolean).join(' · ');
+  }
+  return '';
+}
+/** ข้อความสรุปที่ผ่าน esc แล้ว (บาง section ใส่ HTML เอง) */
+function summaryHTML(g, sec, row, c) {
+  const s = summarize(g, sec, row, c);
+  if (!s) return '';
+  const html = (sec === 'kit' || sec === 'bp' || sec === 'feces') ? s.replace(/^([^<]*)/, m => esc(m)) : esc(s);
+  return (isPositive(g, sec, row) ? '<span class="badge pospill">พบ</span> ' : '') + html;
+}
+
+/** บันทึกผลของ 1 แท็บ — สร้างแถวผลให้อัตโนมัติถ้ายังไม่มี (id = <caseId>-r1 กันสองเครื่องสร้างซ้ำ) */
+async function saveSection(c, sec, vals) {
+  const sheet = RES_SHEET(c.animalGroup);
+  const row = resultRow(c);
+  if (!row) return saveRecord(sheet, c.id.slice(0, 60) + '-r1', Object.assign({ caseId: c.id, examNo: 1 }, vals), { isNew: true });
+  const ch = diffOf(row, vals);
+  if (!Object.keys(ch).length) return { nochange: true };
+  return saveRecord(sheet, row.id, ch);
+}
+
+/** ฟอร์มผลแลป 1 แท็บ */
+function sectionFormHTML(c, sec, row, ro) {
+  const g = c.animalGroup === 'LA' ? 'LA' : 'SA';
+  const fs = secFields(g, sec);
+  const ref = refFor(c);
+  const t = TESTS.find(x => x.k === sec);
+  const hasDiff = fs.some(f => f.diff);
+  return `<form id="secForm" novalidate>
+    <div class="card"><h2>${esc(t.label)} <span class="fl ${esc((row || {})[t.set] || '')}">${esc((row || {})[t.set] || '')}</span></h2>
+      ${ref && fs.some(f => f.ref) ? `<p class="small muted" style="margin-top:0">แสดงค่าอ้างอิงโดยประมาณของ${esc(c.species || 'โค')} — ค่านอกช่วงขึ้น ↑ ↓ สีเหลือง (ยังบันทึกได้)</p>` : ''}
+      <fieldset ${ro ? 'disabled' : ''}>${formHTML(fs, row || {}, ro)}</fieldset>
+      ${hasDiff ? '<div class="small" id="diffSum" style="margin-top:8px"></div>' : ''}
+      ${row && hasData(g, sec, row) ? `<div class="small muted" style="margin-top:10px">ลงผลล่าสุดโดย <b>${esc(row.updatedBy || row.createdBy || '-')}</b> ${fmtTime(row.updatedAt)}</div>` : ''}
+    </div>
+    ${ro ? '<div class="alert info small">ดูได้อย่างเดียว — ลงผลได้เฉพาะหน่วยเจ้าของตัวอย่าง หรือ Lab-path</div>'
+      : `<div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึกผล ${esc(t.short)}</button></div>`}
+  </form>`;
+}
+function bindSectionForm(root, c, sec, onSaved, setDirty) {
+  const g = c.animalGroup === 'LA' ? 'LA' : 'SA';
+  const fs = secFields(g, sec);
+  const form = $('#secForm', root); if (!form) return;
+  const ref = refFor(c);
+  const dkey = `draft_res_${c.id}_${sec}`;
+  const draft = store.get(dkey, null);
+  if (draft && !form.querySelector('fieldset[disabled]')) { // กู้ร่างที่ยังไม่บันทึก
+    Object.keys(draft).forEach(k => {
+      const box = $(`[data-chips="${k}"]`, form);
+      if (box) { const sel = splitMulti(draft[k]).map(String); $$('input', box).forEach(i => i.checked = sel.includes(i.value)); }
+      else { const el = $(`[name="${k}"]`, form); if (el) el.value = draft[k]; }
+    });
+    form.insertAdjacentHTML('afterbegin', '<div class="alert info small">กู้คืนค่าที่พิมพ์ค้างไว้ (ยังไม่ได้บันทึก)</div>');
+  }
+  // ค่าอ้างอิง + ↑↓ + ผลรวม differential แบบสด
+  const live = () => {
+    fs.filter(f => f.ref || HARD[f.k]).forEach(f => {
+      const box = $(`.fld[data-k="${f.k}"]`, form); if (!box) return;
+      let hint = $('.refhint', box); if (!hint) { hint = document.createElement('div'); hint.className = 'refhint small'; box.appendChild(hint); }
+      const v = $(`[name="${f.k}"]`, form).value.trim(), n = Number(v), rr = ref && f.ref ? ref[f.ref] : null;
+      box.classList.remove('warn');
+      let txt = rr ? `อ้างอิง ${rr[0]}–${rr[1]}` : '';
+      if (v !== '' && isFinite(n)) {
+        if (HARD[f.k] && (n < HARD[f.k][0] || n > HARD[f.k][1])) { txt = `เป็นไปไม่ได้ (ต้อง ${HARD[f.k][0]}–${HARD[f.k][1]})`; box.classList.add('warn'); }
+        else if (rr && n < rr[0]) { txt = `↓ ต่ำกว่าอ้างอิง (${rr[0]}–${rr[1]})`; box.classList.add('warn'); }
+        else if (rr && n > rr[1]) { txt = `↑ สูงกว่าอ้างอิง (${rr[0]}–${rr[1]})`; box.classList.add('warn'); }
+      }
+      hint.textContent = txt;
+    });
+    const ds = $('#diffSum', form);
+    if (ds) {
+      const vals = DIFF.map(f => $(`[name="${f.k}"]`, form).value.trim()).filter(v => v !== '');
+      const sum = vals.reduce((a, b) => a + (Number(b) || 0), 0);
+      ds.innerHTML = vals.length ? `ผลรวม Differential count: <b style="color:${Math.abs(sum - 100) <= 0.5 ? 'var(--ok)' : 'var(--err)'}">${sum}%</b> ${Math.abs(sum - 100) <= 0.5 ? '✓' : '(ต้องเท่ากับ 100%)'}` : '<span class="muted">Differential count: ผลรวมต้องเท่ากับ 100%</span>';
+    }
+  };
+  live();
+  form.addEventListener('input', () => { live(); setDirty && setDirty(true); store.set(dkey, readForm(form, fs)); });
+  form.addEventListener('change', () => { setDirty && setDirty(true); store.set(dkey, readForm(form, fs)); });
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const vals = readForm(form, fs);
+    if (validateForm(form, fs, vals).length) return toast('ตรวจสอบช่องที่เป็นสีแดง', 'err');
+    for (const k of Object.keys(HARD)) if (filled(vals[k]) && (vals[k] < HARD[k][0] || vals[k] > HARD[k][1])) return toast(`${fieldLabel(k)} = ${vals[k]} เป็นไปไม่ได้`, 'err');
+    const dv = DIFF.map(f => vals[f.k]).filter(filled);
+    if (dv.length && Math.abs(dv.reduce((a, b) => a + Number(b), 0) - 100) > 0.5) return toast('Differential count รวมต้องเท่ากับ 100%', 'err');
+    const btn = $('button[type=submit]', form); btn.disabled = true;
+    const r = await saveSection(c, sec, vals);
+    btn.disabled = false;
+    if (r.nochange) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
+    if (!r.error) { store.del(dkey); setDirty && setDirty(false); }
+    saveToast(r, 'บันทึกผลแล้ว');
+    onSaved && onSaved();
+  };
+}
+
+/* =====================================================================
+ * 14) หน้า "ผลแลปวันนี้" — แยกแท็บตามการตรวจ: วันนี้ตรวจตัวไหน ผลเป็นอย่างไร
+ * ===================================================================== */
+function VIEWS_lab(el, tab, qs) {
+  const p = Object.fromEntries(new URLSearchParams(qs || ''));
+  tab = TESTS.some(t => t.k === tab) ? tab : (store.get('labTab', 'blood'));
+  store.set('labTab', tab);
+  const draw = () => {
+    const day = Number(p.day) || S.viewDay || todayDay() || 1;
+    const unitF = p.unit ?? store.get('labUnit', '');
+    const showF = p.show || 'all';
+    const cases = rows('Cases').filter(c => Number(c.campDay) === day && (!unitF || c.unit === unitF));
+    const info = c => { const g = c.animalGroup === 'LA' ? 'LA' : 'SA'; const row = resultRow(c); return { g, row }; };
+    const listFor = k => cases.filter(c => {
+      const { g, row } = info(c);
+      if (g === 'LA' && !TESTS.find(t => t.k === k).la) return false;
+      return requestedTests(c).includes(k) || hasData(g, k, row);
+    });
+    const counts = Object.fromEntries(TESTS.map(t => {
+      const l = listFor(t.k); return [t.k, { n: l.length, done: l.filter(c => { const { g, row } = info(c); return hasData(g, t.k, row); }).length }];
+    }));
+    let list = listFor(tab).map(c => ({ c, ...info(c) })).map(o => ({ ...o, done: hasData(o.g, tab, o.row), pos: isPositive(o.g, tab, o.row) }));
+    if (showF === 'todo') list = list.filter(o => !o.done);
+    if (showF === 'pos') list = list.filter(o => o.pos);
+    list.sort((a, b) => (a.done - b.done) || String(a.c.sampleNo || '~').localeCompare(String(b.c.sampleNo || '~'), 'th', { numeric: true }));
+    const t = TESTS.find(x => x.k === tab);
+    const q = (o) => '#/lab/' + tab + '/' + new URLSearchParams(Object.assign({ day, unit: unitF, show: showF }, o)).toString();
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h1 style="margin:0">ผลแลป Day ${day} <span class="small muted">${esc(S.campDates[day] || '')}${todayDay() === day ? ' · วันนี้' : ''}</span></h1>
+        <a class="btn pri" href="#/new">＋ รับตัวอย่าง</a>
+      </div>
+      <div class="card" style="padding:8px 12px">
+        <div class="row">
+          <div class="chips">${campDays().map(d => `<a class="chip" href="${q({ day: d })}"><input type="checkbox" ${d === day ? 'checked' : ''} tabindex="-1"><span>Day ${d}</span></a>`).join('')}</div>
+          <select id="labUnit" style="width:auto;min-width:180px" aria-label="หน่วย"><option value="">ทุกหน่วย</option>${S.units.map(u => `<option value="${esc(u.code)}" ${u.code === unitF ? 'selected' : ''}>${esc(u.code)} — ${esc(u.name)}</option>`).join('')}</select>
+          <div class="chips">${[['all', 'ทั้งหมด'], ['todo', 'ยังไม่ลงผล'], ['pos', 'พบ/Positive']].map(([k, l]) => `<a class="chip" href="${q({ show: k })}"><input type="checkbox" ${k === showF ? 'checked' : ''} tabindex="-1"><span>${l}</span></a>`).join('')}</div>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="ชนิดการตรวจ">${TESTS.map(x => `<a href="${'#/lab/' + x.k + '/' + new URLSearchParams({ day, unit: unitF, show: showF })}" class="${x.k === tab ? 'act' : ''}">${esc(x.short)} <span class="cnt ${counts[x.k].n && counts[x.k].done === counts[x.k].n ? 'all' : ''}">${counts[x.k].done}/${counts[x.k].n}</span></a>`).join('')}</nav>
+      ${tab === 'bp' ? '<div class="alert info small">ข้อมูลสำรวจความชุก blood parasite ในโค (กรอกเป็นชุดตามฟาร์ม) อยู่ที่หน้า <a href="#/cattle">🐄 Blood parasite โค</a></div>' : ''}
+      <div class="card" style="padding:0">
+        ${list.length ? `<div class="tblwrap" style="border:0"><table class="tbl lab"><thead><tr><th>เลขตัวอย่าง</th><th>สัตว์</th><th>หน่วย</th><th>ผล ${esc(t.short)}</th><th>แก้ผลล่าสุด</th><th></th></tr></thead><tbody>
+          ${list.map(({ c, g, row, done }) => `<tr data-href="#/case/${encodeURIComponent(c.id)}/${tab}">
+            <td class="mono"><b>${esc(c.sampleNo || 'รอเลข')}</b></td>
+            <td>${esc(animalLabel(c))}<div class="small muted">${esc([c.species, c.animalGroup === 'LA' ? c.farmName : c.ownerName].filter(Boolean).join(' · '))}</div></td>
+            <td>${esc(c.unit || '')}</td>
+            <td>${done ? summaryHTML(g, tab, row, c) : '<span class="badge st-pending">ยังไม่ลงผล</span>'}</td>
+            <td class="small">${done ? esc(row.updatedBy || '') + '<div class="muted">' + fmtTime(row.updatedAt) + '</div>' : ''}</td>
+            <td class="n"><a class="btn ${done ? '' : 'pri'}" href="#/case/${encodeURIComponent(c.id)}/${tab}">${done ? 'ดู/แก้' : 'ลงผล'}</a></td></tr>`).join('')}
+          </tbody></table></div>`
+        : `<div class="empty">Day ${day} ยังไม่มีตัวอย่างที่ส่งตรวจ ${esc(t.short)}${showF !== 'all' ? ' (ตามตัวกรอง)' : ''}<br><span class="small">ตัวอย่างจะขึ้นที่แท็บนี้เมื่อติ๊ก "${esc(t.label)}" ตอนรับตัวอย่าง</span></div>`}
+      </div>`;
+    $('#labUnit', el).onchange = e => { store.set('labUnit', e.target.value); go(q({ unit: e.target.value })); };
+    $$('tr[data-href]', el).forEach(tr => tr.onclick = e => { if (!e.target.closest('a')) location.hash = tr.dataset.href; });
+    const at = $('.tabs a.act', el); if (at) at.parentNode.scrollLeft = at.offsetLeft - 24;
+  };
+  draw();
+  currentView.refresh = draw;
+}
+const animalLabel = c => (c.animalGroup === 'LA' ? [c.animalId, c.animalName] : [c.animalName, c.animalId]).filter(Boolean).join(' / ') || '(ไม่มีชื่อ)';
+
+/* =====================================================================
+ * 15) หน้าสัตว์ 1 ตัว: สรุปการตรวจ + แท็บลงผล + ข้อมูลสัตว์ + ประวัติแก้ไข
+ * ===================================================================== */
+function bannerHTML(c) {
+  const sex = [c.sex, c.neutered === 'ใช่' ? 'ทำหมัน' : ''].filter(Boolean).join(' · ');
+  return `<div class="banner" role="region" aria-label="ข้อมูลสัตว์">
+    <div class="sn mono">${esc(c.sampleNo || 'รอเลข')}</div>
+    <div class="kv"><small>${c.animalGroup === 'LA' ? 'Ear tag / ชื่อ' : 'ชื่อสัตว์'}</small><b>${esc(animalLabel(c))}</b></div>
+    <div class="kv"><small>ชนิด</small><b>${esc(c.species || '-')}${c.breed ? ' · ' + esc(c.breed) : ''}</b></div>
+    <div class="kv hide-sm"><small>เพศ / อายุ</small><b>${esc(sex || '-')} / ${filled(c.age) ? esc(c.age) + ' ' + esc(c.ageUnit || '') : '-'}</b></div>
+    <div class="kv hide-sm"><small>${c.animalGroup === 'LA' ? 'ฟาร์ม' : 'เจ้าของ'}</small><b>${esc((c.animalGroup === 'LA' ? c.farmName || c.ownerName : c.ownerName) || '-')}</b></div>
+    <div class="kv"><small>หน่วย · วัน</small><b>${esc(c.unit || '-')} · Day ${esc(c.campDay || '-')}</b></div>
+    <div style="margin-left:auto">${statusBadge(c.status)}${c._pending ? ' <span class="badge pend">⏳ รอส่ง</span>' : ''}</div>
+  </div>`;
+}
+/** เคสอื่นของ "สัตว์ตัวเดียวกัน" (ear tag/เลขประจำตัวเดียวกัน หรือชื่อ + เจ้าของเดียวกัน) */
+function sameAnimal(c) {
+  const n = x => String(x || '').replace(/\s+/g, '').toLowerCase();
+  return rows('Cases').filter(o => o.id !== c.id && (
+    (filled(c.animalId) && n(o.animalId) === n(c.animalId)) ||
+    (filled(c.animalName) && filled(c.ownerName) && n(o.animalName) === n(c.animalName) && n(o.ownerName) === n(c.ownerName))))
+    .sort((a, b) => (Number(a.campDay) || 0) - (Number(b.campDay) || 0));
+}
+function testsTableHTML(c, compact) {
+  const g = c.animalGroup === 'LA' ? 'LA' : 'SA', row = resultRow(c), req = requestedTests(c);
+  const list = testsFor(g).filter(t => req.includes(t.k) || hasData(g, t.k, row));
+  if (!list.length) return '<div class="empty small">ยังไม่ได้ระบุการตรวจ</div>';
+  return `<table class="tbl"><thead><tr><th>การตรวจ</th><th>ผล</th>${compact ? '' : '<th>แก้ผลล่าสุด</th><th></th>'}</tr></thead><tbody>
+    ${list.map(t => { const d = hasData(g, t.k, row); return `<tr><td><b>${esc(t.short)}</b>${row && row[t.set] ? ` <span class="fl ${esc(row[t.set])}">${esc(row[t.set])}</span>` : ''}</td>
+      <td>${d ? summaryHTML(g, t.k, row, c) : '<span class="badge st-pending">ยังไม่ลงผล</span>'}</td>
+      ${compact ? '' : `<td class="small">${d ? esc(row.updatedBy || '') : ''}</td><td class="n"><a class="btn ${d ? '' : 'pri'}" href="#/case/${encodeURIComponent(c.id)}/${t.k}">${d ? 'ดู/แก้' : 'ลงผล'}</a></td>`}</tr>`; }).join('')}
+  </tbody></table>`;
+}
+
+function VIEWS_case(el, id, tab) {
+  tab = tab || 'sum';
+  let dirty = false;
+  const draw = fromRemote => {
+    const c = getRec('Cases', id);
+    if (!c || isDel(c)) { el.innerHTML = `<div class="card empty">ไม่พบตัวอย่างนี้ (อาจถูกลบ หรือยังซิงก์ไม่เสร็จ)<br><a class="btn" href="#/search" style="margin-top:10px">ค้นหาสัตว์</a></div>`; return; }
+    if (fromRemote && dirty) { const b = $('.banner', el); if (b) b.outerHTML = bannerHTML(c); return; } // กำลังพิมพ์ → ไม่วาดฟอร์มทับ
+    const g = c.animalGroup === 'LA' ? 'LA' : 'SA';
+    const row = resultRow(c), req = requestedTests(c);
+    const tabs = [['sum', 'สรุปการตรวจ'], ...testsFor(g).map(t => [t.k, t.short]), ['info', 'ข้อมูลสัตว์'], ['history', 'ประวัติแก้ไข']];
+    if (!tabs.some(t => t[0] === tab)) tab = 'sum';
+    const ro = !canEditCase(c);
+    const mark = k => hasData(g, k, row) ? '<span class="tick">✓</span>' : req.includes(k) ? '<span class="dotreq" title="ส่งตรวจ ยังไม่ลงผล"></span>' : '';
+    el.innerHTML = `
+      ${bannerHTML(c)}
+      ${c.status === ST.REVISE ? `<div class="alert err"><b>Lab-path ส่งกลับแก้ไข:</b> ${esc(c.returnReason || '-')}</div>` : ''}
+      ${c.status === ST.VERIFIED ? `<div class="alert ok small">✓ ตรวจสอบแล้วโดย ${esc(c.verifiedBy || '')} ${fmtTime(c.verifiedAt)}</div>` : ''}
+      <nav class="tabs" aria-label="แท็บ">${tabs.map(([k, t]) => `<a href="#/case/${encodeURIComponent(id)}/${k}" class="${k === tab ? 'act' : ''}">${esc(t)} ${TESTS.some(x => x.k === k) ? mark(k) : ''}</a>`).join('')}</nav>
+      <div id="tabBody"></div>`;
+    const at = $('.tabs a.act', el); if (at) at.parentNode.scrollLeft = at.offsetLeft - 24;
+    const body = $('#tabBody', el);
+    if (tab === 'sum') {
+      const others = sameAnimal(c);
+      body.innerHTML = `
+        <div class="card"><h2>การตรวจของตัวอย่างนี้ (Day ${esc(c.campDay)})</h2>${testsTableHTML(c)}
+          <div class="row" style="margin-top:10px">${actionButtons(c)}</div></div>
+        <div class="card"><h2>เคยตรวจอะไรบ้าง — สัตว์ตัวนี้ในวันอื่น (${others.length})</h2>
+          ${others.length ? others.map(o => `<div style="margin-bottom:10px"><div class="row" style="justify-content:space-between"><a href="#/case/${encodeURIComponent(o.id)}"><b class="mono">${esc(o.sampleNo || 'รอเลข')}</b></a><span class="small muted">Day ${esc(o.campDay)} · ${esc(o.unit)} · ${statusBadge(o.status)}</span></div>${testsTableHTML(o, true)}</div>`).join('')
+            : '<div class="empty small">ไม่พบการตรวจครั้งอื่น (เทียบจาก ear tag/เลขประจำตัว หรือ ชื่อสัตว์ + เจ้าของ)</div>'}</div>`;
+      bindActions(c);
+    } else if (tab === 'info') drawInfoTab(body, c, ro, v => dirty = v);
+    else if (tab === 'history') drawHistory(body, c);
+    else {
+      body.innerHTML = sectionFormHTML(c, tab, row, ro);
+      bindSectionForm(body, c, tab, () => { dirty = false; draw(); }, v => dirty = v);
+    }
+  };
+  const actionButtons = c => {
+    const b = [];
+    if (canEditCase(c) && [ST.PENDING, ST.WORKING, ST.REVISE].includes(c.status || ST.PENDING))
+      b.push(`<button class="btn pri" data-act="review">◔ ลงผลครบแล้ว — ส่งให้ Lab-path ตรวจสอบ</button>`);
+    if (isStaff() && c.status !== ST.VERIFIED) b.push(`<button class="btn ok" data-act="verify">✓ ตรวจสอบแล้ว (Verified)</button>`);
+    if (isStaff() && c.status !== ST.REVISE) b.push(`<button class="btn danger" data-act="revise">↩ ส่งกลับแก้ไข</button>`);
+    return b.join('');
+  };
+  const bindActions = c => {
+    $$('[data-act]', el).forEach(btn => btn.onclick = async () => {
+      const a = btn.dataset.act;
+      let ch;
+      if (a === 'review') ch = { status: ST.REVIEW };
+      if (a === 'verify') { if (!await confirmBox('ยืนยันผลถูกต้อง?', `ตัวอย่าง ${esc(c.sampleNo)} จะถูกตั้งเป็น "ตรวจสอบแล้ว" โดย ${esc(S.session.user)}`, 'ตรวจสอบแล้ว', 'ok')) return; ch = { status: ST.VERIFIED, verifiedBy: S.session.user, verifiedAt: new Date().toISOString() }; }
+      if (a === 'revise') {
+        const v = await modal(`<h2>ส่งกลับแก้ไข — ${esc(c.sampleNo)}</h2><div class="fld"><label for="rr">เหตุผล / สิ่งที่ต้องแก้<span class="req">*</span></label><textarea id="rr" name="reason" placeholder="เช่น Differential count ไม่ครบ, ไม่ระบุ method"></textarea></div>
+          <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn danger" data-v="ok" data-collect="1">ส่งกลับแก้ไข</button></div>`);
+        if (!v || !String(v.reason || '').trim()) { if (v) toast('กรุณาระบุเหตุผล', 'warn'); return; }
+        ch = { status: ST.REVISE, returnReason: v.reason.trim() };
+      }
+      const r = await saveRecord('Cases', c.id, ch);
+      saveToast(r, 'อัปเดตสถานะแล้ว');
+      draw();
+    });
+  };
+  draw();
+  currentView.refresh = draw;
+}
+
+/* =====================================================================
+ * 16) ฟอร์มรับตัวอย่าง (แบบสั้น เน้นแลป) — ข้อมูลอายุรกรรมพับไว้ใน "ข้อมูลเพิ่มเติม"
+ * ===================================================================== */
+FIELDS.head = [
+  { k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' },
+  { k:'unit', label:'หน่วยที่เก็บตัวอย่าง', type:'unit', req:true, w:'l' },
+  { k:'queueNo', label:'ลำดับที่', type:'num', im:'numeric' }
+];
+FIELDS.quickSA = [
+  { k:'species', label:'ชนิดสัตว์', type:'chips', list:'species_SA', req:true, w:'full' },
+  { k:'animalName', label:'ชื่อสัตว์', type:'text' },
+  { k:'ownerName', label:'ชื่อเจ้าของ', type:'text' },
+  { k:'moo', label:'หมู่ที่', type:'text', im:'numeric' }
+];
+FIELDS.quickLA = [
+  { k:'species', label:'ชนิดสัตว์', type:'chips', list:'species_LA', req:true, w:'full' },
+  { k:'animalId', label:'Ear tag / หมายเลขสัตว์', type:'text' },
+  { k:'farmName', label:'ฟาร์ม', type:'text', dl:'farms' },
+  { k:'ownerName', label:'เจ้าของ', type:'text' },
+  { k:'moo', label:'หมู่ที่', type:'text', im:'numeric' }
+];
+FIELDS.more = {
+  common: [ { k:'sex', label:'เพศ', type:'chips', opts:['ผู้','เมีย'] }, { k:'age', label:'อายุ', type:'num' },
+    { k:'ageUnit', label:'หน่วยอายุ', type:'chips', opts:['เดือน','ปี'] }, { k:'breed', label:'สายพันธุ์', type:'text' } ],
+  SA: [ { k:'animalId', label:'เลขประจำตัว / ไมโครชิป', type:'text' }, { k:'neutered', label:'ทำหมันแล้ว?', type:'chips', opts:['ใช่','ไม่ใช่'] },
+    { k:'housing', label:'รูปแบบการเลี้ยง', type:'chips', list:'housing', w:'full' }, { k:'petCount', label:'จำนวนที่เลี้ยง (ตัว)', type:'num' },
+    { k:'vaccine', label:'ประวัติวัคซีน', type:'chips', list:'vaccine', w:'full' }, { k:'otherSigns', label:'อาการ/ประวัติที่เกี่ยวข้อง', type:'area', w:'full' } ],
+  LA: [ { k:'animalName', label:'ชื่อสัตว์', type:'text' }, { k:'farmNo', label:'ฟาร์มที่', type:'text' },
+    { k:'animalType', label:'ประเภทสัตว์', type:'chips', list:'animalType_LA', w:'full' }, { k:'colorMarks', label:'สี/ตำหนิ', type:'text' },
+    { k:'physicalExam', label:'Physical examination', type:'area', w:'full' } ],
+  addr: [ { k:'houseNo', label:'บ้านเลขที่', type:'text' }, { k:'subdistrict', label:'ตำบล', type:'text' }, { k:'district', label:'อำเภอ', type:'text' },
+    { k:'province', label:'จังหวัด', type:'text' }, { k:'coordE', label:'พิกัด E', type:'num' }, { k:'coordN', label:'พิกัด N', type:'num' } ],
+  end: [ { k:'sampleTypes', label:'ชนิดตัวอย่างที่เก็บ', type:'multi', list:'sampleTypes', w:'full' }, { k:'procedure', label:'Procedure', type:'text' },
+    { k:'sampleAmount', label:'ปริมาณตัวอย่าง', type:'text' }, { k:'group', label:'กลุ่มที่', type:'group', w:'full' },
+    { k:'refNo', label:'เลขอ้างอิง AppSheet / Doctor Dog', type:'text' }, { k:'recorder', label:'ผู้บันทึก', type:'text', req:true, dl:'members' } ]
+};
+const testsField = g => ({ k:'tests', label:'ส่งตรวจอะไรบ้าง (เลือกได้หลายอย่าง)', type:'multi', opts: testsFor(g).map(t => t.label), req:true, w:'full' });
+function caseFields(group) {
+  const g = group === 'LA' ? 'LA' : 'SA';
+  return [...FIELDS.head, ...FIELDS['quick' + g], testsField(g), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' },
+    ...FIELDS.more.common, ...FIELDS.more[g], ...FIELDS.more.addr, ...FIELDS.more.end];
+}
+function caseFormHTML(rec, ro) {
+  const g = rec.animalGroup === 'LA' ? 'LA' : 'SA';
+  const farms = [...new Set(rows('Cases').map(c => c.farmName).concat(rows('BloodParasite_Cattle').map(c => c.farmName)).filter(Boolean))];
+  return `<datalist id="dl_farms">${farms.map(f => `<option value="${esc(f)}">`).join('')}</datalist>
+    <div class="card"><h2>ข้อมูลตัวอย่าง</h2><fieldset ${ro ? 'disabled' : ''}>
+      <div class="seg" role="group" aria-label="กลุ่มสัตว์" style="margin-bottom:12px">
+        <button type="button" data-ag="SA" class="${g === 'SA' ? 'act' : ''}" aria-pressed="${g === 'SA'}">🐕 สัตว์เล็ก</button>
+        <button type="button" data-ag="LA" class="${g === 'LA' ? 'act' : ''}" aria-pressed="${g === 'LA'}">🐄 สัตว์ใหญ่</button>
+      </div>
+      ${formHTML(FIELDS.head, rec, ro)}
+      <div style="height:8px"></div>${formHTML(FIELDS['quick' + g], rec, ro)}
+      <div style="height:8px"></div>${formHTML([testsField(g), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' }], rec, ro)}
+    </fieldset></div>
+    <details class="sec"><summary>ข้อมูลเพิ่มเติม (ไม่บังคับ) — เพศ อายุ สายพันธุ์ ที่อยู่ ชนิดตัวอย่าง</summary><div class="body"><fieldset ${ro ? 'disabled' : ''}>
+      ${formHTML([...FIELDS.more.common, ...FIELDS.more[g]], rec, ro)}
+      <h3 style="margin:14px 0 6px">ที่อยู่ / พิกัด</h3>${formHTML(FIELDS.more.addr, rec, ro)}
+      ${ro ? '' : '<button type="button" class="btn" id="gpsBtn" style="margin-top:8px">📍 ใช้ GPS เครื่องนี้</button> <span class="small muted" id="gpsMsg"></span>'}
+      <h3 style="margin:14px 0 6px">อื่น ๆ</h3>${formHTML(FIELDS.more.end, rec, ro)}
+    </fieldset></div></details>`;
+}
+
+/* =====================================================================
+ * 17) Blood parasite ในโค — กรอกเป็นชุด (ฟาร์มเดียวกัน) + ความชุก (prevalence)
+ * ===================================================================== */
+const PATHO = [
+  ['bp_babesia_bovis','Babesia bovis','B. bovis'], ['bp_babesia_bigemina','Babesia bigemina','B. bigemina'],
+  ['bp_theileria_orientalis','Theileria orientalis','T. orientalis'], ['bp_theileria_luwenshuni','Theileria luwenshuni','T. luwenshuni'],
+  ['bp_plasmodium_bubalis','Plasmodium bubalis','P. bubalis'], ['bp_plasmodium_caprae','Plasmodium caprae','P. caprae'],
+  ['bp_trypanosoma_evansi','Trypanosoma evansi','T. evansi'], ['bp_anaplasma_marginale','Anaplasma marginale','A. marginale'],
+  ['bp_hemo_mycoplasma','Hemotropic Mycoplasma','Hemo. Myco'], ['bp_setaria','Setaria (non-virulent)','Setaria']
+].map(([k, name, sh]) => ({ k, name, sh }));
+const isPos = v => String(v).toLowerCase() === 'positive';
+/** 95% CI แบบ Wilson */
+function wilson(x, n, z = 1.96) {
+  if (!n) return [0, 0];
+  const p = x / n, d = 1 + z * z / n, c = (p + z * z / (2 * n)) / d, h = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d;
+  return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+const pct = v => (v * 100).toFixed(1);
+/** ดาวน์โหลด CSV (UTF-8 BOM → Excel ภาษาไทยไม่เพี้ยน) */
+function downloadCSV(name, header, data) {
+  const cell = v => { const s = String(v ?? ''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const csv = '﻿' + [header, ...data].map(r => r.map(cell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+function VIEWS_cattle(el, tab) {
+  tab = ['entry', 'prev', 'list'].includes(tab) ? tab : 'prev';
+  const tabsHTML = `<nav class="tabs">${[['prev', '📊 ความชุก (Prevalence)'], ['entry', '✍️ กรอกเป็นชุด'], ['list', '📋 รายการทั้งหมด']]
+    .map(([k, t]) => `<a href="#/cattle/${k}" class="${k === tab ? 'act' : ''}">${t}</a>`).join('')}</nav>`;
+  const head = `<h1>Blood parasite ในโค <span class="small muted">สำรวจความชุก (PBL Bovine Blood Parasite)</span></h1>`;
+  if (tab === 'entry') return cattleEntry(el, head + tabsHTML);
+  if (tab === 'list') return cattleList(el, head + tabsHTML);
+  return cattlePrev(el, head + tabsHTML);
+}
+
+function cattleEntry(el, top) {
+  const s = S.session, u = unitInfo(prefUnit());
+  let st = store.get('draft_cattle', null) || {
+    campDay: todayDay() || 1, unit: prefUnit(), species: u.species || (S.lists.species_LA || [])[0] || '', method: 'Blood smear',
+    farmName: '', ownerName: '', moo: '', rows: Array.from({ length: 5 }, () => ({}))
+  };
+  const draw = () => {
+    el.innerHTML = top + `
+      <form id="bpForm" novalidate>
+      <div class="card"><h2>ข้อมูลฟาร์ม (กรอกครั้งเดียว ใช้กับทุกตัวในชุดนี้)</h2>
+        <div class="grid">
+          ${fieldHTML({ k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' }, st.campDay)}
+          ${fieldHTML({ k:'unit', label:'หน่วย', type:'unit', req:true, w:'l' }, st.unit)}
+          ${fieldHTML({ k:'farmName', label:'สถานที่ / ฟาร์ม', type:'text', req:true, dl:'farms', w:'l' }, st.farmName)}
+          ${fieldHTML({ k:'ownerName', label:'เจ้าของ', type:'text' }, st.ownerName)}
+          ${fieldHTML({ k:'moo', label:'หมู่ที่', type:'text', im:'numeric' }, st.moo)}
+          ${fieldHTML({ k:'species', label:'ชนิดสัตว์', type:'chips', list:'species_LA', req:true, w:'full' }, st.species)}
+          ${fieldHTML({ k:'method', label:'วิธีการตรวจ', type:'chips', list:'cattle_method', req:true, w:'full' }, st.method)}
+        </div>
+        <datalist id="dl_farms">${[...new Set(rows('BloodParasite_Cattle').map(r => r.farmName).concat(rows('Cases').map(c => c.farmName)).filter(Boolean))].map(f => `<option value="${esc(f)}">`).join('')}</datalist>
+      </div>
+      <div class="card" style="padding:0"><h2 style="margin:0">รายตัว — ติ๊กเชื้อที่ <b>Positive</b> (ไม่ติ๊ก = Negative)</h2>
+        <div class="tblwrap" style="border:0"><table class="tbl bpgrid"><thead><tr><th>#</th><th>หมายเลขสัตว์*</th><th>อายุ (ปี)</th><th>เพศ</th><th>สายพันธุ์</th>
+          ${PATHO.map(p => `<th class="pc" title="${esc(p.name)}"><i>${esc(p.sh)}</i></th>`).join('')}<th>หมายเหตุ</th><th></th></tr></thead>
+        <tbody>${st.rows.map((r, i) => `<tr data-i="${i}"><td class="muted">${i + 1}</td>
+          <td><input name="animalId" value="${esc(r.animalId || '')}" style="min-width:110px"></td>
+          <td><input name="age" inputmode="decimal" value="${esc(r.age || '')}" style="width:64px"></td>
+          <td><select name="sex" style="width:64px"><option></option>${['F', 'M'].map(x => `<option ${r.sex === x ? 'selected' : ''}>${x}</option>`).join('')}</select></td>
+          <td><input name="breed" value="${esc(r.breed || '')}" style="min-width:100px"></td>
+          ${PATHO.map(p => `<td class="pc"><input type="checkbox" name="${p.k}" ${r[p.k] ? 'checked' : ''} aria-label="${esc(p.name)} positive"></td>`).join('')}
+          <td><input name="note" value="${esc(r.note || '')}" style="min-width:100px"></td>
+          <td><button type="button" class="btn" data-del="${i}" aria-label="ลบแถว">✕</button></td></tr>`).join('')}</tbody></table></div>
+        <div class="row" style="padding:10px 14px"><button type="button" class="btn" id="addRows">＋ เพิ่ม 5 แถว</button>
+          <span class="small muted">ระบบออกหมายเลขตัวอย่างให้อัตโนมัติ · แถวที่ไม่มีหมายเลขสัตว์จะไม่ถูกบันทึก</span></div>
+      </div>
+      <div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึกทั้งชุด</button><button class="btn" type="button" id="clearBp">ล้างตาราง</button></div>
+      </form>`;
+    const form = $('#bpForm', el);
+    const read = () => {
+      const h = readForm(form, [{ k:'campDay', type:'day' }, { k:'unit' }, { k:'farmName' }, { k:'ownerName' }, { k:'moo' }, { k:'species', type:'chips' }, { k:'method', type:'chips' }]);
+      h.group = s.group; setPrefUnit(h.unit);
+      const rs = $$('tbody tr', form).map(tr => {
+        const o = {}; $$('input,select', tr).forEach(i => o[i.name] = i.type === 'checkbox' ? i.checked : i.value.trim()); return o;
+      });
+      st = Object.assign(st, h, { rows: rs }); store.set('draft_cattle', st);
+    };
+    form.addEventListener('input', read); form.addEventListener('change', read);
+    $('#addRows', el).onclick = () => { read(); st.rows.push(...Array.from({ length: 5 }, () => ({}))); draw(); };
+    $$('[data-del]', el).forEach(b => b.onclick = () => { read(); st.rows.splice(Number(b.dataset.del), 1); if (!st.rows.length) st.rows.push({}); draw(); });
+    $('#clearBp', el).onclick = async () => { if (await confirmBox('ล้างตาราง?', 'ข้อมูลที่ยังไม่ได้บันทึกจะหายไป')) { store.del('draft_cattle'); st.rows = Array.from({ length: 5 }, () => ({})); draw(); } };
+    form.onsubmit = async e => {
+      e.preventDefault(); read();
+      const need = [['campDay', 'วันค่าย'], ['unit', 'หน่วย'], ['farmName', 'ฟาร์ม'], ['species', 'ชนิดสัตว์'], ['method', 'วิธีการตรวจ']].filter(([k]) => !filled(st[k]));
+      if (need.length) return toast('กรุณากรอก: ' + need.map(x => x[1]).join(', '), 'err');
+      const good = st.rows.filter(r => r.animalId);
+      if (!good.length) return toast('ยังไม่มีแถวที่กรอกหมายเลขสัตว์', 'err');
+      const ids = good.map(r => r.animalId.trim().toLowerCase());
+      if (new Set(ids).size !== ids.length) return toast('มีหมายเลขสัตว์ซ้ำกันในตาราง', 'err');
+      if (good.some(r => r.age && !isFinite(Number(r.age)))) return toast('อายุต้องเป็นตัวเลข (ปี)', 'err');
+      const batchId = uuid().slice(0, 13);
+      const now = new Date().toISOString();
+      good.forEach(r => {
+        const rec = { batchId, campDay: st.campDay, date: S.campDates[st.campDay] || todayStr(), unit: st.unit, farmName: st.farmName, ownerName: st.ownerName,
+          moo: st.moo, species: st.species, method: st.method, animalId: r.animalId, age: r.age, sex: r.sex, breed: r.breed, note: r.note, recorder: s.user };
+        PATHO.forEach(p => rec[p.k] = r[p.k] ? 'Positive' : 'Negative');
+        const id = uuid();
+        upsertLocal('BloodParasite_Cattle', Object.assign({ id, version: 1, createdBy: s.user, createdAt: now, updatedAt: now, _pending: true }, rec));
+        enqueue({ action: 'create', sheet: 'BloodParasite_Cattle', id, record: Object.assign({ id }, rec) });
+      });
+      await Promise.race([flushQueue(), new Promise(r => setTimeout(r, 15000))]);
+      const left = S.queue.filter(q => q.sheet === 'BloodParasite_Cattle').length;
+      toast(left ? `บันทึกไว้ในเครื่อง ${good.length} ตัว รอส่ง` : `บันทึกแล้ว ${good.length} ตัว`, left ? 'warn' : 'ok');
+      store.del('draft_cattle');
+      st.rows = Array.from({ length: 5 }, () => ({}));
+      go('#/cattle/list');
+    };
+  };
+  draw();
+}
+
+function cattleFilters() { return Object.assign({ day: '', farm: '', species: '', unit: '', method: '' }, store.get('bpFilter', {})); }
+function cattleFiltered(f) {
+  return rows('BloodParasite_Cattle').filter(r => (!f.day || String(r.campDay) === f.day) && (!f.farm || r.farmName === f.farm) &&
+    (!f.species || r.species === f.species) && (!f.unit || r.unit === f.unit) && (!f.method || r.method === f.method));
+}
+function cattleFilterHTML(f) {
+  const all = rows('BloodParasite_Cattle');
+  const opt = (k, label, vals, show = v => v) => `<div class="fld"><label>${label}</label><select data-f="${k}"><option value="">ทั้งหมด</option>${vals.map(v => `<option value="${esc(v)}" ${String(f[k]) === String(v) ? 'selected' : ''}>${esc(show(v))}</option>`).join('')}</select></div>`;
+  const uniq = k => [...new Set(all.map(r => r[k]).filter(filled))].sort();
+  return `<div class="card"><div class="grid">${opt('day', 'วัน', campDays().map(String), v => 'Day ' + v)}${opt('farm', 'ฟาร์ม', uniq('farmName'))}
+    ${opt('species', 'ชนิดสัตว์', uniq('species'))}${opt('unit', 'หน่วย', uniq('unit'))}${opt('method', 'วิธีตรวจ', uniq('method'))}</div></div>`;
+}
+function bindCattleFilters(el, redraw) {
+  $$('[data-f]', el).forEach(s => s.onchange = () => { const f = cattleFilters(); f[s.dataset.f] = s.value; store.set('bpFilter', f); redraw(); });
+}
+
+function cattlePrev(el, top) {
+  const draw = () => {
+    const f = cattleFilters(), data = cattleFiltered(f), n = data.length;
+    const by = store.get('bpBy', 'farmName');
+    const stat = list => PATHO.map(p => { const x = list.filter(r => isPos(r[p.k])).length; return { p, x, n: list.length, ci: wilson(x, list.length) }; });
+    const st = stat(data);
+    const anyX = data.filter(r => PATHO.some(p => isPos(r[p.k]))).length, anyCI = wilson(anyX, n);
+    const groups = [...new Set(data.map(r => String(r[by] ?? '')))].sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+    const byLabel = { farmName: 'ฟาร์ม', campDay: 'วัน', species: 'ชนิดสัตว์', sex: 'เพศ', unit: 'หน่วย' };
+    el.innerHTML = top + cattleFilterHTML(f) + (n ? `
+      <div class="card"><h2>ความชุกรวม — ตรวจ ${n} ตัว · พบอย่างน้อย 1 ชนิด ${anyX} ตัว (${pct(anyX / n)}%, 95% CI ${pct(anyCI[0])}–${pct(anyCI[1])}%)</h2>
+        <div class="tblwrap"><table class="tbl"><thead><tr><th>เชื้อ</th><th class="n">Positive</th><th class="n">ตรวจ (n)</th><th class="n">ความชุก (%)</th><th class="n">95% CI (Wilson)</th><th style="width:34%">กราฟ</th></tr></thead><tbody>
+        ${st.map(({ p, x, n, ci }) => `<tr><td><i>${esc(p.name)}</i></td><td class="n mono">${x}</td><td class="n mono">${n}</td><td class="n mono"><b>${pct(x / n)}</b></td><td class="n mono">${pct(ci[0])}–${pct(ci[1])}</td>
+          <td><div class="cibar" title="${pct(x / n)}% (${pct(ci[0])}–${pct(ci[1])})"><i style="width:${(x / n * 100).toFixed(1)}%"></i><s style="left:${(ci[0] * 100).toFixed(1)}%;width:${((ci[1] - ci[0]) * 100).toFixed(1)}%"></s></div></td></tr>`).join('')}
+        <tr><td><b>พบอย่างน้อย 1 ชนิด</b></td><td class="n mono"><b>${anyX}</b></td><td class="n mono">${n}</td><td class="n mono"><b>${pct(anyX / n)}</b></td><td class="n mono">${pct(anyCI[0])}–${pct(anyCI[1])}</td>
+          <td><div class="cibar"><i style="width:${(anyX / n * 100).toFixed(1)}%"></i><s style="left:${(anyCI[0] * 100).toFixed(1)}%;width:${((anyCI[1] - anyCI[0]) * 100).toFixed(1)}%"></s></div></td></tr>
+        </tbody></table></div>
+        <p class="small muted">แท่งสี = ความชุก · เส้นขอบ = ช่วงความเชื่อมั่น 95% · ความชุก = จำนวน Positive ÷ จำนวนที่ตรวจ × 100</p>
+      </div>
+      <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">แยกตาม</h2>
+        <select id="bpBy" style="width:auto">${Object.entries(byLabel).map(([k, l]) => `<option value="${k}" ${k === by ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="tblwrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>${byLabel[by]}</th><th class="n">n</th>${PATHO.map(p => `<th class="n" title="${esc(p.name)}"><i>${esc(p.sh)}</i></th>`).join('')}<th class="n">≥1 ชนิด</th></tr></thead><tbody>
+        ${groups.map(gv => { const L = data.filter(r => String(r[by] ?? '') === gv); const ax = L.filter(r => PATHO.some(p => isPos(r[p.k]))).length;
+          return `<tr><td>${esc(by === 'campDay' ? 'Day ' + gv : gv || '(ไม่ระบุ)')}</td><td class="n mono">${L.length}</td>${stat(L).map(({ x, n }) => `<td class="n mono ${x ? 'hl' : ''}">${x ? `${x} <span class="muted">(${pct(x / n)}%)</span>` : '0'}</td>`).join('')}<td class="n mono"><b>${ax}</b> (${pct(ax / L.length)}%)</td></tr>`; }).join('')}
+        </tbody></table></div></div>
+      <div class="card"><h2>ส่งออกข้อมูล</h2><div class="row">
+        <button class="btn" id="csvRaw">⬇ CSV รายตัว (1 แถว = 1 ตัว, SPSS)</button>
+        <button class="btn" id="csvAnon">⬇ CSV รายตัว (ตัดชื่อเจ้าของ — สำหรับเผยแพร่)</button>
+        <button class="btn" id="csvSum">⬇ CSV สรุปความชุก</button></div>
+        <p class="small muted">ส่งออกตามตัวกรองด้านบน · ไฟล์เปิดใน Excel ภาษาไทยได้ · ค่า Positive = 1, Negative = 0 สำหรับวิเคราะห์ทางสถิติ</p></div>`
+      : `<div class="card empty">ยังไม่มีข้อมูลตามตัวกรอง — ไปที่แท็บ <a href="#/cattle/entry">กรอกเป็นชุด</a></div>`);
+    bindCattleFilters(el, draw);
+    const byEl = $('#bpBy', el); if (byEl) byEl.onchange = () => { store.set('bpBy', byEl.value); draw(); };
+    const raw = anon => {
+      const cols = ['sampleNo', 'campDay', 'date', 'unit', 'farmName', ...(anon ? [] : ['ownerName']), 'moo', 'animalId', 'species', 'age', 'sex', 'breed', 'method'];
+      downloadCSV(`bloodparasite_cattle${anon ? '_deid' : ''}_${todayStr()}.csv`, [...cols, ...PATHO.map(p => p.name), 'any_positive', 'note', 'recorder'],
+        data.map(r => [...cols.map(c => r[c]), ...PATHO.map(p => isPos(r[p.k]) ? 1 : 0), PATHO.some(p => isPos(r[p.k])) ? 1 : 0, r.note, r.recorder]));
+    };
+    if ($('#csvRaw', el)) {
+      $('#csvRaw', el).onclick = () => raw(false);
+      $('#csvAnon', el).onclick = () => raw(true);
+      $('#csvSum', el).onclick = () => downloadCSV(`bloodparasite_prevalence_${todayStr()}.csv`, ['pathogen', 'positive', 'n', 'prevalence_pct', 'ci95_low', 'ci95_high'],
+        [...st.map(({ p, x, n, ci }) => [p.name, x, n, pct(x / n), pct(ci[0]), pct(ci[1])]), ['Any (>=1)', anyX, n, pct(anyX / n), pct(anyCI[0]), pct(anyCI[1])]]);
+    }
+  };
+  draw();
+  currentView.refresh = draw;
+}
+
+function cattleList(el, top) {
+  const draw = () => {
+    const f = cattleFilters();
+    const data = cattleFiltered(f).sort((a, b) => String(a.sampleNo || '~').localeCompare(String(b.sampleNo || '~'), 'th', { numeric: true }));
+    el.innerHTML = top + cattleFilterHTML(f) + `<div class="card" style="padding:0">
+      ${data.length ? `<div class="tblwrap" style="border:0"><table class="tbl"><thead><tr><th>เลขตัวอย่าง</th><th>ฟาร์ม</th><th>หมายเลขสัตว์</th><th>อายุ/เพศ</th><th>วิธี</th><th>ผล Positive</th><th>บันทึกโดย</th></tr></thead><tbody>
+        ${data.map(r => { const ps = PATHO.filter(p => isPos(r[p.k])); return `<tr data-id="${esc(r.id)}" style="cursor:pointer">
+          <td class="mono"><b>${esc(r.sampleNo || 'รอเลข')}</b>${r._pending ? ' <span class="badge pend">⏳</span>' : ''}</td><td>${esc(r.farmName)}<div class="small muted">Day ${esc(r.campDay)} · ${esc(r.species || '')}</div></td>
+          <td>${esc(r.animalId)}</td><td>${esc(r.age ?? '')} ${filled(r.age) ? 'ปี' : ''} ${esc(r.sex || '')}</td><td class="small">${esc(r.method || '')}</td>
+          <td>${ps.length ? ps.map(p => `<span class="badge pospill"><i>${esc(p.sh)}</i></span>`).join(' ') : '<span class="muted">Negative ทั้งหมด</span>'}</td>
+          <td class="small">${esc(r.updatedBy || r.createdBy || '')}</td></tr>`; }).join('')}
+      </tbody></table></div>` : '<div class="empty">ยังไม่มีข้อมูล</div>'}</div>`;
+    bindCattleFilters(el, draw);
+    $$('tr[data-id]', el).forEach(tr => tr.onclick = () => editCattle(tr.dataset.id, draw));
+  };
+  draw();
+  currentView.refresh = draw;
+}
+async function editCattle(id, after) {
+  const r = getRec('BloodParasite_Cattle', id); if (!r) return;
+  const can = isStaff() || (!!S.session.group && String(r.group || '') === String(S.session.group));
+  const v = await modal(`<h2>${esc(r.sampleNo || 'รอเลข')} — ${esc(r.animalId)} <span class="small muted">${esc(r.farmName)}</span></h2>
+    <div class="grid">${fieldHTML({ k:'animalId', label:'หมายเลขสัตว์', type:'text' }, r.animalId, !can)}${fieldHTML({ k:'age', label:'อายุ (ปี)', type:'num' }, r.age, !can)}
+      ${fieldHTML({ k:'sex', label:'เพศ', type:'select', opts:['F', 'M'] }, r.sex, !can)}${fieldHTML({ k:'breed', label:'สายพันธุ์', type:'text' }, r.breed, !can)}</div>
+    <h3 style="margin:12px 0 6px">ผลรายเชื้อ (ติ๊ก = Positive)</h3>
+    <div class="chips">${PATHO.map(p => `<label class="chip"><input type="checkbox" name="${p.k}" ${isPos(r[p.k]) ? 'checked' : ''} ${can ? '' : 'disabled'}><span><i>${esc(p.name)}</i></span></label>`).join('')}</div>
+    ${fieldHTML({ k:'note', label:'หมายเหตุ', type:'text', w:'full' }, r.note, !can)}
+    <p class="small muted">บันทึกโดย ${esc(r.createdBy || '-')} · แก้ล่าสุด ${esc(r.updatedBy || '-')} ${fmtTime(r.updatedAt)}</p>
+    <div class="acts">${can ? '<button class="btn danger" data-v="del">ลบ</button>' : ''}<button class="btn" data-v="null">ปิด</button>${can ? '<button class="btn pri" data-v="save" data-collect="1">💾 บันทึก</button>' : ''}</div>`);
+  if (v === 'del') { if (await confirmBox('ลบรายการนี้?', esc(r.sampleNo + ' ' + r.animalId), 'ลบ', 'danger')) { await removeRecord('BloodParasite_Cattle', id); toast('ลบแล้ว'); } return after(); }
+  if (!v || typeof v !== 'object') return;
+  // modal collect อ่าน checkbox เป็น "on" เสมอ → อ่านสถานะจริงจาก DOM ที่จับไว้
+  const ch = { animalId: v.animalId, age: v.age === '' ? '' : Number(v.age), sex: v.sex, breed: v.breed, note: v.note };
+  (lastCattleChecks || []).forEach(([k, on]) => ch[k] = on ? 'Positive' : 'Negative');
+  const diff = diffOf(r, ch);
+  if (!Object.keys(diff).length) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
+  saveToast(await saveRecord('BloodParasite_Cattle', id, diff));
+  after();
+}
+let lastCattleChecks = null;
+document.addEventListener('click', e => {
+  const b = e.target.closest('.modal [data-v=save]');
+  if (b) lastCattleChecks = PATHO.map(p => { const i = b.closest('.box').querySelector(`[name="${p.k}"]`); return [p.k, i ? i.checked : false]; });
+}, true);
+
+/** แท็บข้อมูลสัตว์: แก้ไข + บันทึก (มี draft อัตโนมัติ) */
+function drawInfoTab(body, c, ro, setDirty) {
+  const dkey = 'draft_case_' + c.id;
+  const draft = store.get(dkey, null);
+  let st = Object.assign({}, c, draft && draft.base === c.version ? draft.vals : {});
+  const render = () => {
+    body.innerHTML = `
+      ${draft && draft.base === c.version && !ro ? '<div class="alert info small">มีฉบับร่างที่ยังไม่ได้บันทึก (กู้คืนให้แล้ว) <button class="btn" id="dropDraft" type="button">ทิ้งฉบับร่าง</button></div>' : ''}
+      ${draft && draft.base !== c.version && !ro ? '<div class="alert warn small">ฉบับร่างเดิมถูกยกเลิก เพราะมีคนแก้เคสนี้หลังจากนั้น</div>' : ''}
+      ${ro ? `<div class="alert info small">ดูได้อย่างเดียว — แก้ไขได้เฉพาะหน่วย ${esc(c.unit)}${c.group ? ', กลุ่ม ' + esc(c.group) : ''} หรือ Lab-path</div>` : ''}
+      <form id="infoForm" novalidate>${caseFormHTML(st, ro)}
+        <div class="card small muted">สร้างโดย ${esc(c.createdBy || '-')} ${fmtTime(c.createdAt)} · แก้ไขล่าสุดโดย ${esc(c.updatedBy || '-')} ${fmtTime(c.updatedAt)} · เวอร์ชัน ${esc(c.version)}</div>
+        ${ro ? '' : `<div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึกข้อมูลสัตว์</button>
+          ${c.status !== ST.VERIFIED || isStaff() ? '<button class="btn danger" type="button" id="delCase">ลบเคส</button>' : ''}</div>`}
+      </form>`;
+    if (draft && draft.base !== c.version) store.del(dkey);
+    if (ro) return;
+    const form = $('#infoForm', body);
+    const fieldsNow = () => caseFields(st.animalGroup || 'SA');
+    bindCaseForm(form, () => st, ns => { st = ns; setDirty(true); render(); });
+    const onEdit = () => { st = Object.assign(st, readForm(form, fieldsNow())); setDirty(true); store.set(dkey, { base: c.version, vals: diffOf(c, st) }); };
+    form.addEventListener('input', onEdit); form.addEventListener('change', onEdit);
+    const dd = $('#dropDraft', body); if (dd) dd.onclick = () => { store.del(dkey); setDirty(false); st = Object.assign({}, c); render(); };
+    form.onsubmit = async e => {
+      e.preventDefault();
+      const fields = fieldsNow();
+      const vals = Object.assign(readForm(form, fields), { animalGroup: st.animalGroup });
+      if (validateForm(form, fields, vals).length) return toast('กรุณากรอกช่องที่จำเป็นให้ครบ', 'err');
+      if (vals.campDay !== c.campDay) vals.date = S.campDates[vals.campDay] || c.date;
+      const ch = diffOf(c, vals);
+      if (!Object.keys(ch).length) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
+      const r = await saveRecord('Cases', c.id, ch);
+      store.del(dkey); setDirty(false);
+      saveToast(r);
+      refreshView();
+    };
+    if ($('#delCase', body)) $('#delCase', body).onclick = async () => {
+      if (!await confirmBox('ลบเคสนี้?', `เคส ${esc(c.sampleNo || '')} และผลแลปทั้งหมดของเคสจะถูกซ่อน (ยังกู้คืนได้จาก Google Sheet คอลัมน์ deleted)`, 'ลบเคส', 'danger')) return;
+      await removeRecord('Cases', c.id);
+      store.del(dkey); toast('ลบเคสแล้ว', 'ok'); go('#/search');
+    };
+  };
+  render();
+}
+/** เทียบค่าที่เปลี่ยน (ใช้ String เทียบ เพราะตัวเลข/ข้อความจากชีตปนกัน) */
+function diffOf(orig, vals) {
+  const o = {};
+  Object.keys(vals).forEach(k => { if (k.startsWith('_')) return; if (String(vals[k] ?? '') !== String(orig[k] ?? '')) o[k] = vals[k]; });
+  return o;
+}
+
+/** แท็บประวัติการแก้ไข (ดึงจาก AuditLog — ต้องออนไลน์) */
+async function drawHistory(body, c) {
+  body.innerHTML = '<div class="card empty">กำลังโหลดประวัติ…</div>';
+  const ids = [c.id, ...rows('SA_Results').concat(rows('LA_Results')).filter(r => r.caseId === c.id).map(r => r.id)];
+  try {
+    const r = await api('audit', { recordIds: ids });
+    if (!r.ok) throw new Error(r.message);
+    const list = r.rows.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+    const actTh = { create: 'สร้าง', update: 'แก้ไข', delete: 'ลบ', status: 'สถานะ' };
+    body.innerHTML = `<div class="card"><h2>ประวัติการแก้ไข (${list.length})</h2>${list.length ? `<div class="tblwrap"><table class="tbl">
+      <thead><tr><th>เวลา</th><th>ผู้ใช้</th><th>การกระทำ</th><th>ช่อง</th><th>ค่าเดิม → ค่าใหม่</th></tr></thead><tbody>
+      ${list.map(a => `<tr><td class="small" style="white-space:nowrap">${fmtTime(a.timestamp)}</td><td>${esc(a.user)}<div class="small muted">${esc(ROLE_TH[a.role] || a.role)}</div></td>
+        <td>${esc(actTh[a.action] || a.action)}<div class="small muted">${esc(a.sheet)}</div></td><td>${esc(a.field === '*' ? '—' : fieldLabel(a.field))}</td>
+        <td>${a.field === '*' ? esc(a.newValue) : `<span class="muted">${esc(a.oldValue) || '(ว่าง)'}</span> → <b>${esc(a.newValue) || '(ว่าง)'}</b>`}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">ยังไม่มีประวัติ</div>'}</div>`;
+  } catch (e) {
+    body.innerHTML = `<div class="card empty">${e.network ? 'ดูประวัติได้เมื่อออนไลน์' : esc(e.message)}</div>`;
+  }
+}
+
+/* =====================================================================
+ * 18) เบิก/คืน Test kit และอุปกรณ์ (ตู้เย็นแลป)
+ *     คงเหลือในตู้ = ยอดตั้งต้น − เบิกออก + คืนกลับ  ·  ใช้ไป = เบิก − คืน (เซิร์ฟเวอร์คำนวณ)
+ *     เบิกแล้วยังไม่บันทึกยอดคืน → ขึ้นสีแดง
+ * ===================================================================== */
+function VIEWS_kits(el, kind) {
+  kind = kind === 'supply' ? 'supply' : 'kit';
+  const sheet = kind === 'kit' ? 'TestKitLog' : 'SupplyLog';
+  const items = () => kind === 'kit' ? S.kits : S.supplies;
+  const nm = kind === 'kit' ? 'test kit' : 'อุปกรณ์';
+  const draw = () => {
+    const logs = rows(sheet);
+    const n = v => Number(v) || 0;
+    const open = logs.filter(r => !filled(r.returned)).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+    const today = todayDay();
+    const stock = items().map(it => {
+      const L = logs.filter(r => r.item === it.name);
+      const out = L.reduce((a, r) => a + n(r.takenOut), 0), back = L.reduce((a, r) => a + n(r.returned), 0);
+      const used = L.reduce((a, r) => a + n(r.used), 0), pending = L.filter(r => !filled(r.returned)).reduce((a, r) => a + n(r.takenOut), 0);
+      return { ...it, out, back, used, pending, left: it.stock - out + back };
+    });
+    // รายการที่ไม่อยู่ในตั้งค่า (เช่น พิมพ์ชื่อเอง) ก็ยังแสดง
+    [...new Set(logs.map(r => r.item))].filter(x => x && !items().some(i => i.name === x)).forEach(x => {
+      const L = logs.filter(r => r.item === x);
+      stock.push({ name: x, stock: 0, out: L.reduce((a, r) => a + n(r.takenOut), 0), back: L.reduce((a, r) => a + n(r.returned), 0),
+        used: L.reduce((a, r) => a + n(r.used), 0), pending: L.filter(r => !filled(r.returned)).reduce((a, r) => a + n(r.takenOut), 0), left: null });
+    });
+    el.innerHTML = `
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h1 style="margin:0">เบิก / คืน ${kind === 'kit' ? 'Test kit' : 'อุปกรณ์เก็บตัวอย่าง'}</h1>
+        <button class="btn pri" id="takeBtn">＋ เบิก ${esc(nm)}</button></div>
+      <nav class="tabs"><a href="#/kits/kit" class="${kind === 'kit' ? 'act' : ''}">🧪 Test kit</a><a href="#/kits/supply" class="${kind === 'supply' ? 'act' : ''}">🧰 อุปกรณ์ (หลอด สไลด์ syringe …)</a></nav>
+      ${open.length ? `<div class="card" style="border-color:#f0a8b3"><h2 style="border-left-color:var(--err);color:var(--err)">⚠ เบิกแล้วยังไม่บันทึกยอดคืน (${open.length})</h2>
+        <div class="tblwrap"><table class="tbl"><thead><tr><th>วัน</th><th>หน่วย</th><th>รายการ</th><th class="n">เบิก</th><th>ผู้เบิก</th><th></th></tr></thead><tbody>
+        ${open.map(r => `<tr class="${today && Number(r.campDay) < today ? 'late' : ''}"><td>Day ${esc(r.campDay)}${Number(r.campDay) < (today || 0) ? ' <span class="badge st-revise">ค้างข้ามวัน</span>' : ''}</td><td>${esc(r.unit)}</td><td><b>${esc(r.item)}</b></td>
+          <td class="n mono">${esc(r.takenOut)}</td><td class="small">${esc(r.takenBy || r.createdBy || '')}<div class="muted">${fmtTime(r.createdAt)}</div></td>
+          <td class="n"><button class="btn pri" data-ret="${esc(r.id)}">บันทึกยอดคืน</button></td></tr>`).join('')}
+        </tbody></table></div></div>` : `<div class="alert ok small">✓ ทุกรายการที่เบิกบันทึกยอดคืนแล้ว</div>`}
+      <div class="card"><h2>คงเหลือในตู้ (เรียลไทม์)</h2>
+        <div class="tblwrap"><table class="tbl"><thead><tr><th>รายการ</th><th class="n">ตั้งต้น</th><th class="n">เบิกออก</th><th class="n">คืนกลับ</th><th class="n">ใช้ไป</th><th class="n">ค้างคืน</th><th class="n">คงเหลือในตู้</th></tr></thead><tbody>
+        ${stock.map(s => { const low = s.left !== null && s.stock && s.left <= Math.max(1, s.stock * 0.2);
+          return `<tr><td><b>${esc(s.name)}</b></td><td class="n mono">${s.stock || '-'}</td><td class="n mono">${s.out}</td><td class="n mono">${s.back}</td><td class="n mono">${s.used}</td>
+          <td class="n mono">${s.pending ? `<b style="color:var(--err)">${s.pending}</b>` : '0'}</td>
+          <td class="n mono"><b style="${low ? 'color:var(--err)' : ''}">${s.left === null ? '-' : s.left}</b>${low ? ' <span class="badge st-revise">ใกล้หมด</span>' : ''}</td></tr>`; }).join('') || '<tr><td colspan="7" class="empty">ยังไม่มีรายการในตั้งค่า</td></tr>'}
+        </tbody></table></div>
+        <p class="small muted">ยอดตั้งต้นแก้ได้ในชีต Settings (หมวด ${kind}) · "ค้างคืน" = เบิกออกไปแล้วยังไม่นับคืน</p></div>
+      <div class="card"><h2>ประวัติการเบิก-คืน (${logs.length})</h2>
+        ${logs.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>วัน</th><th>หน่วย</th><th>รายการ</th><th class="n">เบิก</th><th class="n">คืน</th><th class="n">ใช้ไป</th><th>ผู้เบิก</th><th>ผู้ตรวจนับ</th><th></th></tr></thead><tbody>
+        ${[...logs].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map(r => `<tr><td>Day ${esc(r.campDay)}</td><td>${esc(r.unit)}</td><td>${esc(r.item)}</td>
+          <td class="n mono">${esc(r.takenOut)}</td><td class="n mono">${filled(r.returned) ? esc(r.returned) : '<span class="badge st-revise">ยังไม่คืน</span>'}</td><td class="n mono">${esc(r.used ?? '')}</td>
+          <td class="small">${esc(r.takenBy || '')}</td><td class="small">${esc(r.countedBy || '')}</td>
+          <td class="n">${canEditLog(r) ? `<button class="btn" data-ret="${esc(r.id)}">แก้</button>` : ''}${r._pending ? ' <span class="badge pend">⏳</span>' : ''}</td></tr>`).join('')}
+        </tbody></table></div>` : '<div class="empty">ยังไม่มีการเบิก</div>'}</div>`;
+    $('#takeBtn', el).onclick = () => takeItem(sheet, kind, items(), draw);
+    $$('[data-ret]', el).forEach(b => b.onclick = () => returnItem(sheet, b.dataset.ret, draw));
+  };
+  draw();
+  currentView.refresh = draw;
+}
+const canEditLog = r => isStaff() || (!!S.session.group && String(r.group || '') === String(S.session.group));
+
+async function takeItem(sheet, kind, items, after) {
+  const s = S.session;
+  const v = await modal(`<h2>เบิก${kind === 'kit' ? ' Test kit' : 'อุปกรณ์'}${s.group ? ' — กลุ่ม ' + esc(s.group) : ''}</h2>
+    <div class="grid">
+      ${fieldHTML({ k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' }, todayDay() || 1)}
+      ${fieldHTML({ k:'unit', label:'หน่วยที่เบิก', type:'unit', req:true, w:'l' }, prefUnit())}
+      <div class="fld full"><div class="lab">รายการ<span class="req">*</span></div><div class="unitpick">${items.map(i => `<label><input type="radio" name="item" value="${esc(i.name)}"> ${esc(i.name)}</label>`).join('')}</div></div>
+      ${fieldHTML({ k:'takenOut', label:'จำนวนที่เบิกออก (อัน)', type:'num', im:'numeric', req:true }, '')}
+      ${fieldHTML({ k:'takenBy', label:'ผู้เบิก', type:'text', dl:'members' }, s.user)}
+      ${fieldHTML({ k:'note', label:'หมายเหตุ', type:'text', w:'full' }, '')}
+    </div>
+    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">💾 บันทึกการเบิก</button></div>`);
+  if (!v || typeof v !== 'object') return;
+  const day = Number(lastModalDay()) || todayDay() || 1;
+  const n = Number(v.takenOut);
+  if (!v.item) return toast('กรุณาเลือกรายการ', 'warn');
+  if (!Number.isInteger(n) || n <= 0) return toast('จำนวนที่เบิกต้องเป็นจำนวนเต็มมากกว่า 0', 'warn');
+  setPrefUnit(v.unit);
+  const rec = { unit: v.unit, group: s.group, campDay: day, date: S.campDates[day] || todayStr(), item: v.item, takenOut: n, returned: '',
+    takenBy: v.takenBy || s.user, note: v.note };
+  if (!rec.unit) return toast('กรุณาเลือกหน่วย', 'warn');
+  saveToast(await saveRecord(sheet, uuid(), rec, { isNew: true }), `เบิก ${v.item} ${n} อัน`);
+  after();
+}
+/** อ่านวันที่เลือกใน modal ล่าสุด (modal collect ไม่อ่าน chip ที่เป็น checkbox) */
+let _lastDay = '';
+document.addEventListener('click', e => {
+  const b = e.target.closest('.modal [data-v]');
+  if (b) { const d = b.closest('.box').querySelector('[data-chips=campDay] input:checked'); _lastDay = d ? d.value : ''; }
+}, true);
+const lastModalDay = () => _lastDay;
+
+async function returnItem(sheet, id, after) {
+  const r = getRec(sheet, id); if (!r) return;
+  if (!canEditLog(r)) return toast('แก้ได้เฉพาะหน่วย ' + r.unit + ' หรือ Lab-path', 'warn');
+  const v = await modal(`<h2>บันทึกยอดคืน — ${esc(r.item)}</h2>
+    <p>หน่วย <b>${esc(r.unit)}</b> · Day ${esc(r.campDay)} · เบิกออก <b>${esc(r.takenOut)}</b> อัน โดย ${esc(r.takenBy || r.createdBy || '')}</p>
+    <div class="grid">
+      ${fieldHTML({ k:'returned', label:'จำนวนที่เหลือนำกลับมาแช่ (อัน)', type:'num', im:'numeric', req:true }, r.returned)}
+      ${fieldHTML({ k:'countedBy', label:'ผู้ตรวจนับ', type:'text', dl:'members' }, r.countedBy || S.session.user)}
+      ${fieldHTML({ k:'note', label:'หมายเหตุ', type:'text', w:'full' }, r.note)}
+    </div>
+    <p class="small muted" id="usedHint">ใช้ไป = เบิก − คืน (คำนวณให้อัตโนมัติ)</p>
+    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">💾 บันทึก</button></div>`,
+    { onMount(box) { const i = $('[name=returned]', box); const h = () => { const x = Number(i.value); $('#usedHint', box).textContent = i.value !== '' && isFinite(x) ? `ใช้ไป ${r.takenOut - x} อัน` : 'ใช้ไป = เบิก − คืน (คำนวณให้อัตโนมัติ)'; }; i.oninput = h; h(); } });
+  if (!v || typeof v !== 'object') return;
+  const x = Number(v.returned);
+  if (v.returned === '' || !Number.isInteger(x) || x < 0) return toast('จำนวนคืนต้องเป็นจำนวนเต็ม 0 ขึ้นไป', 'warn');
+  if (x > Number(r.takenOut)) return toast('จำนวนคืนมากกว่าจำนวนที่เบิก', 'warn');
+  const ch = diffOf(r, { returned: x, countedBy: v.countedBy, note: v.note });
+  if (!Object.keys(ch).length) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
+  saveToast(await saveRecord(sheet, id, ch), 'บันทึกยอดคืนแล้ว');
+  after();
+}
+
+/* =====================================================================
+ * 19) จองห้องแลป — ตารางวัน × ช่วงเวลา (ช่วงบ่าย 13.30–17.00 น.)
+ *     จองได้ไม่เกินโควตาต่อช่อง · กลุ่มเดียวกันจองช่องเดิมซ้ำไม่ได้ · ยกเลิกได้เฉพาะคนจองหรือ Lab-path
+ * ===================================================================== */
+function VIEWS_booking(el, dayArg) {
+  const draw = () => {
+    const day = Number(dayArg) || S.viewDay || todayDay() || 1;
+    const slots = String(S.cfg.bookingSlots || '13:30-14:40').split(',').map(x => x.trim()).filter(Boolean);
+    const rooms = String(S.cfg.bookingRooms || 'ห้องแลป').split(',').map(x => x.trim()).filter(Boolean);
+    const quota = Number(S.cfg.bookingQuota) || 2;
+    const all = rows('LabBooking');
+    const at = (d, sl, rm) => all.filter(b => Number(b.campDay) === d && b.slot === sl && b.room === rm);
+    el.innerHTML = `
+      <h1>จองห้องแลป <span class="small muted">ช่วงบ่ายหลังกลับจากหน่วย · ช่องละไม่เกิน ${quota} กลุ่ม/ห้อง</span></h1>
+      <div class="card"><h2>ภาพรวมทุกวัน (จองแล้ว / โควตา)</h2><div class="tblwrap"><table class="tbl bkall"><thead><tr><th>ช่วงเวลา</th>${campDays().map(d => `<th class="n"><a href="#/booking/${d}">Day ${d}</a><div class="small muted">${esc((S.campDates[d] || '').slice(5))}</div></th>`).join('')}</tr></thead><tbody>
+        ${slots.map(sl => `<tr><td class="mono">${esc(sl)}</td>${campDays().map(d => { const n = rooms.reduce((a, rm) => a + at(d, sl, rm).length, 0), q = quota * rooms.length;
+          return `<td class="n mono ${d === day ? 'cur' : ''}"><a href="#/booking/${d}" class="${n >= q ? 'full' : n ? 'some' : ''}">${n}/${q}</a></td>`; }).join('')}</tr>`).join('')}
+      </tbody></table></div></div>
+      <div class="row" style="margin-bottom:8px"><div class="chips">${campDays().map(d => `<a class="chip" href="#/booking/${d}"><input type="checkbox" ${d === day ? 'checked' : ''} tabindex="-1"><span>Day ${d}</span></a>`).join('')}</div></div>
+      ${rooms.map(rm => `<div class="card"><h2>${esc(rm)} — Day ${day} ${esc(S.campDates[day] || '')}</h2><div class="bkgrid">
+        ${slots.map(sl => { const L = at(day, sl, rm), full = L.length >= quota;
+          return `<div class="bkslot ${full ? 'full' : ''}"><div class="row" style="justify-content:space-between"><b class="mono">${esc(sl)}</b>
+              <span class="badge ${full ? 'st-revise' : L.length ? 'st-review' : 'st-verified'}">${full ? 'เต็ม' : 'ว่าง ' + (quota - L.length)} · ${L.length}/${quota}</span></div>
+            <div class="bklist">${L.map(b => `<div class="bkitem"><span><b>${esc(b.unit)}</b>${b.group ? ' · กลุ่ม ' + esc(b.group) : ''}<span class="small muted"> — ${esc(b.bookedBy || b.createdBy || '')}</span>${b._pending ? ' ⏳' : ''}${b.note ? `<div class="small muted">${esc(b.note)}</div>` : ''}</span>
+              ${isStaff() || b.createdBy === S.session.user ? `<button class="btn" data-cancel="${esc(b.id)}" aria-label="ยกเลิกการจอง">ยกเลิก</button>` : ''}</div>`).join('') || '<div class="small muted">ยังไม่มีการจอง</div>'}</div>
+            ${full ? '' : `<button class="btn pri block" data-book="${esc(sl)}" data-room="${esc(rm)}">＋ จองช่วงนี้</button>`}</div>`; }).join('')}
+      </div></div>`).join('')}`;
+    $$('[data-book]', el).forEach(b => b.onclick = () => book(day, b.dataset.book, b.dataset.room, draw));
+    $$('[data-cancel]', el).forEach(b => b.onclick = async () => {
+      const r = getRec('LabBooking', b.dataset.cancel);
+      if (!await confirmBox('ยกเลิกการจอง?', `${esc(r.unit)}${r.group ? ' กลุ่ม ' + esc(r.group) : ''} · Day ${esc(r.campDay)} ${esc(r.slot)}`, 'ยกเลิกการจอง', 'danger')) return;
+      const res = await removeRecord('LabBooking', r.id);
+      toast(res.sent ? 'ยกเลิกแล้ว' : 'บันทึกไว้ในเครื่อง รอส่ง', res.sent ? 'ok' : 'warn');
+      draw();
+    });
+  };
+  draw();
+  currentView.refresh = draw;
+}
+async function book(day, slot, room, after) {
+  const s = S.session;
+  if (!s.group && !isStaff()) return toast('กรุณาเลือกกลุ่มก่อน (เมนู เปลี่ยนกลุ่ม)', 'warn');
+  const v = await modal(`<h2>จองห้องแลป — Day ${day} · ${esc(slot)}</h2><p class="small muted">${esc(room)} · ผู้จอง ${esc(s.user)}</p>
+    <div class="grid">
+      ${fieldHTML({ k:'unit', label:'หน่วย', type:'unit', req:true, w:'l' }, prefUnit())}
+      ${isStaff() ? `<div class="fld full"><div class="lab">กลุ่มที่<span class="req">*</span></div><div class="chips">${groupChipsHTML(s.group || '', false)}</div></div>` : `<div class="fld"><div class="lab">กลุ่ม</div><b>กลุ่ม ${esc(s.group)}</b></div>`}
+      ${fieldHTML({ k:'note', label:'จะตรวจอะไร (ไม่บังคับ) เช่น Blood smear 10 ตัว, McMaster', type:'text', w:'full' }, '')}
+    </div>
+    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">จอง</button></div>`);
+  if (!v || typeof v !== 'object') return;
+  const group = isStaff() ? v.group : s.group;
+  if (!group) return toast('กรุณาเลือกกลุ่ม', 'warn');
+  const unit = v.unit;
+  if (!unit) return toast('กรุณาเลือกหน่วย', 'warn');
+  setPrefUnit(unit);
+  const quota = Number(S.cfg.bookingQuota) || 2;
+  const same = rows('LabBooking').filter(b => Number(b.campDay) === day && b.slot === slot && b.room === room);
+  if (same.some(b => b.unit === unit && String(b.group) === String(group))) return toast('กลุ่มนี้จองช่วงนี้ไว้แล้ว', 'warn');
+  if (same.length >= quota) return toast('ช่วงนี้เต็มแล้ว', 'warn');
+  const r = await saveRecord('LabBooking', uuid(), { campDay: day, date: S.campDates[day] || '', slot, room, unit, group, note: v.note, bookedBy: s.user }, { isNew: true, silent: true });
+  if (r.error) {
+    // เต็มระหว่างที่กำลังจอง (มีคนจองตัดหน้า) → ถอนรายการในเครื่องแล้วแจ้ง
+    S.queue = S.queue.filter(q => q.id !== r.q.id); saveQueue();
+    S.data.LabBooking = S.data.LabBooking.filter(b => b.id !== r.q.id); saveCache();
+    toast('จองไม่สำเร็จ: ' + r.error.message, 'err', 6000);
+    sync();
+  } else saveToast(r, `จอง Day ${day} ${slot} แล้ว`);
+  after();
+}
+
+/* =====================================================================
+ * 15) หน้าที่จะเพิ่มในส่วนถัดไป + คู่มือ
+ * ===================================================================== */
+const soon = (title, part) => el => { el.innerHTML = `<h1>${esc(title)}</h1><div class="card empty">หน้านี้จะเพิ่มใน <b>ส่วนที่ ${part}</b></div>`; };
+
+function showGuide() {
+  modal(`<h2>📖 คู่มือการใช้งานฉบับย่อ</h2>
+    <ol class="steps">
+      <li><b>เก็บตัวอย่าง</b> ในพื้นที่ (เลือด อุจจาระ ปัสสาวะ ผิวหนัง ฯลฯ)</li>
+      <li><b>รับตัวอย่าง</b> เมนู "＋ รับตัวอย่าง" → เลือกชนิดสัตว์ ใส่ชื่อ/ear tag และติ๊ก "ส่งตรวจอะไรบ้าง" → ได้เลขตัวอย่าง เช่น <span class="mono">D1-SA-001</span> เขียนลงหลอด/ถุงทันที</li>
+      <li><b>ตรวจ</b> ที่หน้างาน (<span class="fl F">F</span> Field) หรือในห้องแลป (<span class="fl L">L</span> Lab) — จองห้องแลปได้ที่เมนู "จองห้องแลป"</li>
+      <li><b>ลงผล</b> หน้า "🧪 ผลแลปวันนี้" เลือกแท็บการตรวจ (Blood, Fecal …) → กด "ลงผล" ที่ตัวนั้น → 💾 บันทึก · ลงผลครบแล้วกด "ส่งให้ Lab-path ตรวจสอบ"</li>
+      <li><b>Lab-path ตรวจสอบ</b> → "ตรวจสอบแล้ว" หรือ "ส่งกลับแก้ไข" (เคสที่ต้องแก้จะขึ้นที่หน้าหลักของหน่วย)</li>
+      <li><b>Blood parasite โค</b> กรอกเป็นชุดตามฟาร์ม (ติ๊กเชื้อที่ Positive) → ดูความชุก + 95% CI และ export CSV ที่หน้า "🐄 Blood parasite โค"</li>
+    </ol>
+    <h3 style="margin-top:14px">ป้ายสถานะการเชื่อมต่อ (มุมขวาบน)</h3>
+    <p class="small"><span class="pill on"><span class="dot"></span>ออนไลน์</span> ข้อมูลส่งแล้ว ·
+      <span class="pill q">⏳ รอส่ง n รายการ</span> เน็ตหลุด ข้อมูลอยู่ในเครื่อง ระบบส่งให้เองเมื่อมีเน็ต (ห้ามล้างข้อมูลเบราว์เซอร์) ·
+      <span class="pill bad">⚠ มีปัญหา</span> กดเพื่อดูและแก้</p>
+    <p class="small">ข้อมูลจากเครื่องอื่นจะขึ้นเองภายใน ~30 วินาที · ถ้ามีคนแก้เคสเดียวกันพร้อมกัน ระบบจะให้เลือกว่าจะใช้ค่าไหน ไม่เขียนทับกัน</p>
+    <div class="acts"><button class="btn pri" data-v="null">เข้าใจแล้ว</button></div>`);
+}
+
+const VIEWS = {
+  lab: VIEWS_lab, dashboard: VIEWS_dashboard, search: VIEWS_search, new: VIEWS_new, case: VIEWS_case, cattle: VIEWS_cattle, kits: VIEWS_kits, booking: VIEWS_booking,
+  reports: soon('รายงาน / Export', 5), settings: soon('ตั้งค่า', 5)
+};
+
+/* =====================================================================
+ * 16) เริ่มต้นแอป
+ * ===================================================================== */
+loadCache();
+// การเข้าใช้งานใช้ได้เฉพาะวันที่เข้า → วันใหม่ต้องยืนยันชื่อ + หน่วยอีกครั้ง (คิวรอส่งยังอยู่)
+if (S.session && S.session.day === todayStr()) startApp(false);
+else if (S.session) logout('เริ่มวันใหม่ — กรุณายืนยันชื่อและหน่วยที่ปฏิบัติงานวันนี้', true);
+else renderLogin();
+</script>
+</body>
+</html>
