@@ -1006,6 +1006,7 @@ function renderLogin(msg) {
       <button class="btn pri big block" type="submit">เข้าใช้งาน</button>
       <button class="btn block" type="button" id="lgBack" style="margin-top:8px">ย้อนกลับ</button>
     </form>
+    <p class="small" style="text-align:center;margin:14px 0 0"><a href="manual.html" target="_blank" rel="noopener">📖 คู่มือการใช้งาน</a></p>
   </div></div>`;
   let pending = null, picked = null;
   /** หาคนในรายชื่อจากสิ่งที่พิมพ์: ชื่อเต็มตรง → ชื่อต้นตรง → ชื่อที่ขึ้นต้นด้วยที่พิมพ์ (แนะนำ) */
@@ -2652,7 +2653,7 @@ function showGuide() {
       <span class="pill q">⏳ รอส่ง n รายการ</span> เน็ตหลุด ข้อมูลอยู่ในเครื่อง ระบบส่งให้เองเมื่อมีเน็ต (ห้ามล้างข้อมูลเบราว์เซอร์) ·
       <span class="pill bad">⚠ มีปัญหา</span> กดเพื่อดูและแก้</p>
     <p class="small">ข้อมูลจากเครื่องอื่นจะขึ้นเองภายใน ~30 วินาที · ถ้ามีคนแก้เคสเดียวกันพร้อมกัน ระบบจะให้เลือกว่าจะใช้ค่าไหน ไม่เขียนทับกัน</p>
-    <div class="acts"><button class="btn pri" data-v="null">เข้าใจแล้ว</button></div>`);
+    <div class="acts"><a class="btn" href="manual.html" target="_blank" rel="noopener">📖 เปิดคู่มือฉบับเต็ม</a><button class="btn pri" data-v="null">เข้าใจแล้ว</button></div>`);
 }
 
 const VIEWS = {
