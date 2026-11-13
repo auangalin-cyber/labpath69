@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2f4a66">
 <title>LabPath สพช.69</title>
+<link rel="icon" href="logo.jpg"><link rel="apple-touch-icon" href="logo.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -225,6 +226,9 @@ table.tbl td.n,table.tbl th.n{text-align:right}
 .login .box{background:#fff;border-radius:8px;padding:22px;width:min(440px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--pink)}
 .login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .login-hd .mark{font-size:14px;padding:4px 8px}
+.login-logo{display:block;width:min(240px,75%);height:auto;margin:0 auto 12px}
+.login-logo+.login-hd{justify-content:center;text-align:center}
+header.top .logo img{height:32px;width:auto;background:#fff;border-radius:4px;padding:1px 2px;display:block}
 .login h1{margin:0;font-size:18px}
 .lsteps{display:flex;gap:6px;list-style:none;padding:0;margin:0 0 14px}
 .lsteps li{flex:1;text-align:center;font-size:12px;padding:4px;border-bottom:3px solid var(--line);color:var(--muted)}
@@ -912,7 +916,7 @@ function renderShell() {
   const navItems = NAV.filter(n => (!n.staff || isStaff()) && (!n.admin || s.role === 'admin'));
   $('#app').innerHTML = `
   <header class="top">
-    <div class="logo"><span class="mark">LAB</span><span><span class="full">${esc(APP_NAME)}</span><span class="short">LabPath</span></span></div>
+    <div class="logo"><img src="logo.jpg" alt="สพช.69 CUVET 85" onerror="this.outerHTML='<span class=mark>LAB</span>'"><span><span class="full">${esc(APP_NAME)}</span><span class="short">LabPath</span></span></div>
     <div class="sp"></div>
     <button id="connPill" class="pill on" aria-label="สถานะการเชื่อมต่อ"></button>
     <div class="userchip"><b>${esc(s.user)}</b>${s.group ? 'กลุ่ม ' + esc(s.group) : 'ไม่สังกัดกลุ่ม'} · ${ROLE_TH[s.role]}</div>
@@ -991,7 +995,8 @@ function renderLogin(msg) {
   const savedPin = store.get('pin', '');
   $('#app').innerHTML = `
   <div class="login"><div class="box">
-    <div class="login-hd"><span class="mark">LAB</span><div><h1>${esc(APP_NAME)}</h1><div class="small muted">ระบบบันทึกผลแลป · คณะสัตวแพทยศาสตร์ จุฬาฯ</div></div></div>
+    <img class="login-logo" src="logo.jpg" alt="SORPORCHOR 69 · CUVET 85">
+    <div class="login-hd"><div><h1>${esc(APP_NAME)}</h1><div class="small muted">ระบบบันทึกผลแลป · คณะสัตวแพทยศาสตร์ จุฬาฯ</div></div></div>
     ${msg ? `<div class="alert warn">${esc(msg)}</div>` : ''}
     ${!(window.__LP_API_URL || API_URL) ? '<div class="alert err">ผู้ดูแลยังไม่ได้ใส่ <b>API_URL</b> ในไฟล์ index.html</div>' : ''}
     <ol class="lsteps"><li class="on" id="ls1">1 รหัสค่าย</li><li id="ls2">2 ชื่อ + กลุ่ม</li></ol>
