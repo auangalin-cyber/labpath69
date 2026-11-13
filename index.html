@@ -1559,7 +1559,7 @@ function sectionFormHTML(c, sec, row, ro) {
       ${row && hasData(g, sec, row) ? `<div class="small muted" style="margin-top:10px">ลงผลล่าสุดโดย <b>${esc(row.updatedBy || row.createdBy || '-')}</b> ${fmtTime(row.updatedAt)}</div>` : ''}
     </div>
     ${ro ? '<div class="alert info small">ดูได้อย่างเดียว — ลงผลได้เฉพาะหน่วยเจ้าของตัวอย่าง หรือ Lab-path</div>'
-      : `<div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึกผล ${esc(t.short)}</button></div>`}
+      : `<div class="formbar"><button class="btn pri big" type="submit" style="flex:1">💾 บันทึกผล ${esc(t.short)}</button>${row && hasData(g, sec, row) ? '<button class="btn danger" type="button" id="secClear">🗑 ลบผลการตรวจนี้</button>' : ''}</div>`}
   </form>`;
 }
 function bindSectionForm(root, c, sec, onSaved, setDirty) {
@@ -1615,6 +1615,19 @@ function bindSectionForm(root, c, sec, onSaved, setDirty) {
     if (r.nochange) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
     if (!r.error) { store.del(dkey); setDirty && setDirty(false); }
     saveToast(r, 'บันทึกผลแล้ว');
+    onSaved && onSaved();
+  };
+  const clr = $('#secClear', form);
+  if (clr) clr.onclick = async () => {
+    const t = TESTS.find(x => x.k === sec);
+    if (!await confirmBox(`ลบผล ${t.short}?`, `ผล ${esc(t.label)} ของ ${esc(c.sampleNo || '')} จะถูกล้างทั้งหมด (ข้อมูลอื่นของตัวนี้ไม่หาย · ดูย้อนหลังได้ในแท็บประวัติแก้ไข)`, 'ลบผล', 'danger')) return;
+    const vals = {}; fs.forEach(f => vals[f.k] = '');
+    clr.disabled = true;
+    const r = await saveSection(c, sec, vals);
+    clr.disabled = false;
+    if (r.nochange) return toast('ไม่มีผลให้ลบ', 'info');
+    if (!r.error) { store.del(dkey); setDirty && setDirty(false); }
+    saveToast(r, 'ลบผลแล้ว');
     onSaved && onSaved();
   };
 }
