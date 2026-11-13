@@ -150,6 +150,9 @@ input:disabled,select:disabled,textarea:disabled{background:var(--surface-2);col
 .chip input:checked+span::before{content:"✓ "}
 .chip input:focus-visible+span{outline:2px solid #b9cfe6}
 .chip input:disabled+span{opacity:.65;cursor:default}
+/* อาจารย์/ศิษย์เก่า = ดูอย่างเดียว: ซ่อนปุ่มที่ใช้บันทึก/แก้ไข (เซิร์ฟเวอร์กันอีกชั้น) */
+body.viewer [data-r="new"],body.viewer a[href^="#/new"],body.viewer a[href="#/cattle/entry"],body.viewer #takeBtn,body.viewer [data-book],body.viewer [data-cancel],body.viewer [data-ret]{display:none!important}
+.lgkind{margin-bottom:12px}
 fieldset{border:0;padding:0;margin:0}
 details.sec{border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);margin-bottom:12px;box-shadow:var(--shadow)}
 details.sec>summary{cursor:pointer;padding:7px 14px;font-weight:600;font-size:14px;color:var(--brand-dk);list-style:none;display:flex;align-items:center;gap:8px;min-height:36px;background:var(--brand-xlt);border-bottom:1px solid var(--line);border-left:3px solid var(--brand);border-radius:var(--radius) var(--radius) 0 0}
@@ -333,7 +336,8 @@ const ST = { PENDING:'รอตรวจ', WORKING:'กำลังตรวจ'
 const ST_ORDER = [ST.PENDING, ST.WORKING, ST.REVIEW, ST.VERIFIED, ST.REVISE];
 const ST_CLASS = { [ST.PENDING]:'pending', [ST.WORKING]:'working', [ST.REVIEW]:'review', [ST.VERIFIED]:'verified', [ST.REVISE]:'revise' };
 const ST_ICON = { [ST.PENDING]:'○', [ST.WORKING]:'◐', [ST.REVIEW]:'◔', [ST.VERIFIED]:'✓', [ST.REVISE]:'!' };
-const ROLE_TH = { member:'สมาชิก', labpath:'Lab-path', admin:'Admin' };
+const ROLE_TH = { member:'สมาชิก', labpath:'Lab-path', admin:'Admin', viewer:'ดูอย่างเดียว' };
+const GUEST_TH = { student:'นิสิต', teacher:'อาจารย์', alumni:'ศิษย์เก่าสัตวแพทย์' };
 
 const $ = (s, el=document) => el.querySelector(s);
 const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
@@ -412,11 +416,12 @@ const unitInfo = code => S.units.find(u => u.code === code) || {};
 const todayDay = () => { const t = todayStr(); const k = Object.keys(S.campDates).find(d => S.campDates[d] === t); return k ? Number(k) : null; };
 const unitName = code => (S.units.find(u => u.code === code) || {}).name || code || '-';
 const isStaff = () => S.session && (S.session.role === 'labpath' || S.session.role === 'admin');
+const isViewer = () => !!S.session && S.session.role === 'viewer';
 const rows = sheet => S.data[sheet].filter(r => !isDel(r));
 const getRec = (sheet, id) => S.data[sheet].find(r => r.id === id);
 /** แก้ได้ถ้าเป็น Lab-path/Admin หรือเคสของหน่วยเดียวกัน หรือกลุ่มเดียวกัน (กลุ่มเวียนหน่วยทุกวัน) — ตรงกับกฎฝั่งเซิร์ฟเวอร์ */
 function canEditCase(c) {
-  if (!S.session || !c) return false;
+  if (!S.session || !c || isViewer()) return false;
   const s = S.session;
   return isStaff() || (!!s.unit && c.unit === s.unit) || (!!s.group && String(c.group || '') === String(s.group));
 }
@@ -429,7 +434,7 @@ async function api(action, payload = {}, timeout = 30000) {
   const url = window.__LP_API_URL || API_URL;
   if (!url) throw new NetErr('ยังไม่ได้ตั้งค่า API_URL ใน index.html');
   const s = S.session || {};
-  const body = JSON.stringify(Object.assign({ action, pin: s.pin, user: s.user, unit: s.unit, group: s.group }, payload));
+  const body = JSON.stringify(Object.assign({ action, pin: s.pin, user: s.user, unit: s.unit, group: s.group, guest: s.guest || '' }, payload));
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   let res, j;
@@ -537,6 +542,7 @@ function upsertLocal(sheet, rec, server) {
  * คืนค่า { q, rec, sent } (sent = ส่งถึงเซิร์ฟเวอร์แล้ว)
  */
 async function saveRecord(sheet, id, values, { isNew = false, force = false, silent = false } = {}) {
+  if (isViewer()) return { error: { message: 'บัญชีอาจารย์/ศิษย์เก่า ดูได้อย่างเดียว' } };
   const me = S.session.user, now = new Date().toISOString();
   let q;
   if (isNew) {
@@ -562,6 +568,7 @@ function saveToast(r, okMsg = 'บันทึกแล้ว') {
   else toast('บันทึกไว้ในเครื่อง รอส่ง', 'warn');
 }
 async function removeRecord(sheet, id) {
+  if (isViewer()) { toast('บัญชีอาจารย์/ศิษย์เก่า ดูได้อย่างเดียว', 'warn'); return { sent: false }; }
   const cur = getRec(sheet, id);
   if (cur && cur._pending && S.queue.some(q => q.action === 'create' && q.id === id)) {
     // ยังไม่เคยส่งขึ้นเซิร์ฟเวอร์ → ลบในเครื่องได้เลย
@@ -909,13 +916,14 @@ const NAV = [
 ];
 function renderShell() {
   const s = S.session;
+  document.body.classList.toggle('viewer', s.role === 'viewer');
   const navItems = NAV.filter(n => (!n.staff || isStaff()) && (!n.admin || s.role === 'admin'));
   $('#app').innerHTML = `
   <header class="top">
     <div class="logo"><span class="mark">LAB</span><span><span class="full">${esc(APP_NAME)}</span><span class="short">LabPath</span></span></div>
     <div class="sp"></div>
     <button id="connPill" class="pill on" aria-label="สถานะการเชื่อมต่อ"></button>
-    <div class="userchip"><b>${esc(s.user)}</b>${s.group ? 'กลุ่ม ' + esc(s.group) : 'ไม่สังกัดกลุ่ม'} · ${ROLE_TH[s.role]}</div>
+    <div class="userchip"><b>${esc(s.user)}</b>${s.role === 'viewer' ? '👁 ' + esc(GUEST_TH[s.guest] || '') + ' · ดูอย่างเดียว' : (s.group ? 'กลุ่ม ' + esc(s.group) : 'ไม่สังกัดกลุ่ม') + ' · ' + ROLE_TH[s.role]}</div>
     <button class="iconbtn" id="helpBtn" aria-label="คู่มือ" title="คู่มือ">❓</button>
   </header>
   <div class="scrim" id="scrim"></div>
@@ -957,6 +965,10 @@ function route() {
   const parts = (location.hash || '#/lab').replace(/^#\/?/, '').split('/');
   const name = parts[0] || 'lab';
   $$('nav [data-r]').forEach(a => a.classList.toggle('act', a.dataset.r === name));
+  if (isViewer() && (name === 'new' || (name === 'cattle' && parts[1] === 'entry'))) {
+    $('#view').innerHTML = '<div class="card empty">👁 บัญชีอาจารย์/ศิษย์เก่า ดูข้อมูลได้อย่างเดียว — รับตัวอย่าง/กรอกข้อมูลไม่ได้<p><a class="btn" href="#/lab">ไปหน้าผลแลป</a></p></div>';
+    currentView = { name, args: [], refresh: null }; return;
+  }
   const v = VIEWS[name] || VIEWS.lab;
   currentView = { name, args: parts.slice(1), refresh: null };
   $('#view').innerHTML = '';
@@ -1002,10 +1014,11 @@ function renderLogin(msg) {
       <button class="btn pri big block" type="submit">ถัดไป</button>
     </form>
     <form id="step2" class="hidden" autocomplete="off">
-      <div class="fld" style="margin-bottom:8px"><label for="lgName">ชื่อของคุณ (ไม่ต้องใส่นามสกุล)<span class="req">*</span></label>
-        <input id="lgName" type="text" value="${esc(firstName(last.user || ''))}" placeholder="เช่น อารัทธ์" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+      <div class="fld lgkind hidden" id="lgKindBox"><div class="lab">ฉันเป็น</div><div class="chips">${Object.keys(GUEST_TH).map(k => `<label class="chip"><input type="radio" name="lgKind" value="${k}" ${(last.kind || 'student') === k ? 'checked' : ''}><span>${GUEST_TH[k]}</span></label>`).join('')}</div></div>
+      <div class="fld" style="margin-bottom:8px"><label for="lgName" id="lgNameLab">ชื่อของคุณ (ไม่ต้องใส่นามสกุล)<span class="req">*</span></label>
+        <input id="lgName" type="text" value="${esc(last.kind && last.kind !== 'student' ? (last.user || '') : firstName(last.user || ''))}" placeholder="เช่น อารัทธ์" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
       <div id="lgMatch" class="lgmatch"></div>
-      <div class="fld" style="margin:10px 0 14px"><div class="lab">กลุ่ม (ล็อกตามรายชื่อค่าย)</div><div id="lgGroupShow" class="grpshow muted">— พิมพ์ชื่อก่อน —</div></div>
+      <div class="fld" style="margin:10px 0 14px"><div class="lab" id="lgGroupLab">กลุ่ม (ล็อกตามรายชื่อค่าย)</div><div id="lgGroupShow" class="grpshow muted">— พิมพ์ชื่อก่อน —</div></div>
       <div class="alert info small">ชื่อนี้จะถูกบันทึกเป็น "ผู้บันทึก/ผู้แก้ไข" ในทุกข้อมูลที่คุณเพิ่มหรือแก้ และระบบเก็บประวัติการเข้าใช้งานไว้</div>
       <div id="lgErr2"></div>
       <button class="btn pri big block" type="submit">เข้าใช้งาน</button>
@@ -1023,19 +1036,26 @@ function renderLogin(msg) {
     const fv = firstName(v);
     return { suggest: fv.length >= 1 ? S.members.filter(m => firstName(m.name).startsWith(fv)).slice(0, 8) : [] };
   };
+  const kind = () => pending && pending.role === 'member' ? ($('input[name=lgKind]:checked') || {}).value || 'student' : 'student';
   const toStep2 = role => {
     $('#step1').classList.add('hidden'); $('#step2').classList.remove('hidden');
     $('#ls1').classList.remove('on'); $('#ls2').classList.add('on');
+    $('#lgKindBox').classList.toggle('hidden', role !== 'member');
     const showGroup = () => {
       const el = $('#lgGroupShow');
-      if (picked) { el.className = 'grpshow'; el.innerHTML = `🔒 <b>กลุ่ม ${esc(picked.group)}</b> <span class="small muted">— ${esc(picked.name)}</span>`; }
+      if (kind() !== 'student') { el.className = 'grpshow'; el.innerHTML = `👁 <b>ดูได้อย่างเดียว</b> <span class="small muted">— ไม่สังกัดกลุ่ม · ดูผลแลปได้ทุกกลุ่ม แต่บันทึก/แก้ไขไม่ได้</span>`; }
+      else if (picked) { el.className = 'grpshow'; el.innerHTML = `🔒 <b>กลุ่ม ${esc(picked.group)}</b> <span class="small muted">— ${esc(picked.name)}</span>`; }
       else if (role !== 'member' && $('#lgName').value.trim()) { el.className = 'grpshow muted'; el.textContent = 'ไม่สังกัดกลุ่ม (ไม่อยู่ในรายชื่อนิสิต — Lab-path/อาจารย์ใช้ได้)'; }
       else { el.className = 'grpshow muted'; el.textContent = '— พิมพ์ชื่อก่อน —'; }
     };
     const check = () => {
       const v = $('#lgName').value.trim(); picked = null;
       const box = $('#lgMatch');
-      if (!v || !S.members.length) { box.innerHTML = ''; showGroup(); return; }
+      const k = kind();
+      $('#lgNameLab').innerHTML = (k === 'student' ? 'ชื่อของคุณ (ไม่ต้องใส่นามสกุล)' : 'ชื่อ-นามสกุล') + '<span class="req">*</span>';
+      $('#lgName').placeholder = k === 'student' ? 'เช่น อารัทธ์' : 'เช่น สมชาย ใจดี';
+      $('#lgGroupLab').textContent = k === 'student' ? 'กลุ่ม (ล็อกตามรายชื่อค่าย)' : 'สิทธิ์';
+      if (!v || !S.members.length || k !== 'student') { box.innerHTML = ''; showGroup(); return; }
       const r = findMembers(v);
       const list = r.exact || r.suggest;
       if (r.exact && r.exact.length === 1) picked = r.exact[0];
@@ -1046,7 +1066,9 @@ function renderLogin(msg) {
       $$('[data-pick]', box).forEach(b => b.onclick = () => { $('#lgName').value = b.dataset.pick; check(); });
       showGroup();
     };
-    $('#lgName').oninput = check; check();
+    $('#lgName').oninput = check;
+    $$('input[name=lgKind]').forEach(i => i.onchange = () => { check(); $('#lgName').focus(); });
+    check();
     setTimeout(() => $('#lgName').focus(), 30);
   };
   $('#step1').onsubmit = async e => {
@@ -1075,18 +1097,20 @@ function renderLogin(msg) {
     e.preventDefault();
     const typed = $('#lgName').value.trim().replace(/\s+/g, ' ');
     if (typed.length < 2) return toast('กรุณากรอกชื่อ', 'warn');
-    if (pending.role === 'member' && S.members.length && !picked) return toast('ไม่พบชื่อในรายชื่อค่าย หรือชื่อซ้ำ — แตะเลือกชื่อจากรายการ', 'warn');
+    const k = kind();
+    if (k === 'student' && pending.role === 'member' && S.members.length && !picked) return toast('ไม่พบชื่อในรายชื่อค่าย หรือชื่อซ้ำ — แตะเลือกชื่อจากรายการ', 'warn');
     const btn = $('#step2 button[type=submit]'); btn.disabled = true; btn.textContent = 'กำลังเข้าใช้งาน…';
     try {
       // ส่งชื่อเต็มตามรายชื่อ · กลุ่มเซิร์ฟเวอร์เป็นผู้กำหนดจากรายชื่อ (หน้าเว็บเปลี่ยนเองไม่ได้)
-      S.session = { user: picked ? picked.name : typed, pin: pending.pin, unit: '', group: picked ? picked.group : '' };
+      S.session = k === 'student' ? { user: picked ? picked.name : typed, pin: pending.pin, unit: '', group: picked ? picked.group : '' }
+        : { user: typed, pin: pending.pin, unit: '', group: '', guest: k };
       const r = await api('checkin', { device: deviceInfo() });
       if (!r.ok) throw new Error(r.message || 'เข้าใช้งานไม่สำเร็จ');
-      S.session = { user: r.user, pin: pending.pin, role: r.role, unit: '', group: r.group || '', day: todayStr(), at: Date.now() };
+      S.session = { user: r.user, pin: pending.pin, role: r.role, unit: '', group: r.group || '', guest: r.role === 'viewer' ? k : '', day: todayStr(), at: Date.now() };
       store.set('session', S.session);
-      store.set('lastLogin', { user: r.user });
+      store.set('lastLogin', { user: r.role === 'viewer' ? typed : r.user, kind: k });
       startApp(true);
-      toast(`เข้าใช้งานในชื่อ ${r.user}${r.group ? ' · กลุ่ม ' + r.group : ''}`, 'ok');
+      toast(`เข้าใช้งานในชื่อ ${r.user}${r.group ? ' · กลุ่ม ' + r.group : ''}${r.role === 'viewer' ? ' · ดูได้อย่างเดียว' : ''}`, 'ok');
     } catch (err) {
       S.session = null;
       $('#lgErr2').innerHTML = `<div class="alert err">${esc(err.network ? 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — การเข้าใช้งานต้องมีอินเทอร์เน็ต' : err.message)}</div>`;
