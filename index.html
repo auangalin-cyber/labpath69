@@ -298,6 +298,8 @@ td.hl{background:var(--pink-lt)!important}
   #printArea .foot{margin-top:12pt;font-size:8pt;color:#555;border-top:0.5pt solid #aaa;padding-top:3pt}
 }
 
+.agtag{display:inline-block;margin-bottom:12px;padding:6px 12px;border-radius:5px;background:var(--brand-lt);color:var(--brand-dk);font-weight:600}
+
 /* หน้าเข้าใช้งาน: เลือกชื่อ */
 .lgmatch{display:flex;flex-direction:column;gap:4px}
 .lgmatch .btn{justify-content:flex-start;text-align:left}
@@ -1250,6 +1252,20 @@ function bindCaseForm(root, getState, setState) {
     if (!vals.species && unitInfo(vals.unit || st.unit).group === b.dataset.ag) vals.species = unitInfo(vals.unit || st.unit).species || '';
     setState(Object.assign(st, vals, { animalGroup: b.dataset.ag }));
   });
+  // เปลี่ยนหน่วย → กลุ่มสัตว์และตัวเลือกชนิดสัตว์เปลี่ยนตามหน่วยทันที
+  const us = $('[name=unit]', root);
+  if (us) us.addEventListener('change', () => {
+    const st = getState(), u = unitInfo(us.value);
+    if (!u.group) return;
+    const g = u.group === 'LA' ? 'LA' : 'SA';
+    const vals = readForm(root, caseFields(st.animalGroup || 'SA'));
+    vals.unit = us.value;
+    if (!(S.lists['species_' + g] || []).includes(vals.species)) vals.species = u.species || '';
+    if (u.species) vals.species = u.species;
+    // การตรวจที่สัตว์ใหญ่ไม่มี (เช่น Urinalysis) ตัดออกเมื่อย้ายไปหน่วยโค
+    vals.tests = splitMulti(vals.tests).filter(l => { const t = testByLabel(l); return t && (g !== 'LA' || t.la); }).join('; ');
+    setState(Object.assign(st, vals, { animalGroup: g }));
+  });
   const gps = $('#gpsBtn', root);
   if (gps) gps.onclick = () => {
     if (!navigator.geolocation) return toast('เครื่องนี้ไม่รองรับ GPS', 'err');
@@ -1809,14 +1825,17 @@ function caseFields(group) {
     ...FIELDS.more.common, ...FIELDS.more[g], ...FIELDS.more.addr, ...FIELDS.more.end];
 }
 function caseFormHTML(rec, ro) {
-  const g = rec.animalGroup === 'LA' ? 'LA' : 'SA';
+  // กลุ่มสัตว์ผูกกับหน่วย: หน่วยโค → สัตว์ใหญ่ (โคเนื้อ/โคนม) · หน่วยสัตว์เลี้ยง/สูติกรรม → สัตว์เล็ก (สุนัข/แมว)
+  const u = unitInfo(rec.unit);
+  const g = u.group ? (u.group === 'LA' ? 'LA' : 'SA') : (rec.animalGroup === 'LA' ? 'LA' : 'SA');
   const farms = [...new Set(rows('Cases').map(c => c.farmName).concat(rows('BloodParasite_Cattle').map(c => c.farmName)).filter(Boolean))];
   return `<datalist id="dl_farms">${farms.map(f => `<option value="${esc(f)}">`).join('')}</datalist>
     <div class="card"><h2>ข้อมูลตัวอย่าง</h2><fieldset ${ro ? 'disabled' : ''}>
-      <div class="seg" role="group" aria-label="กลุ่มสัตว์" style="margin-bottom:12px">
+      ${u.group ? `<div class="agtag">${g === 'LA' ? '🐄 สัตว์ใหญ่ (โค)' : '🐕 สัตว์เล็ก (สุนัข / แมว)'} <span class="small muted">— ตามหน่วยที่เลือก</span></div>`
+        : `<div class="seg" role="group" aria-label="กลุ่มสัตว์" style="margin-bottom:12px">
         <button type="button" data-ag="SA" class="${g === 'SA' ? 'act' : ''}" aria-pressed="${g === 'SA'}">🐕 สัตว์เล็ก</button>
         <button type="button" data-ag="LA" class="${g === 'LA' ? 'act' : ''}" aria-pressed="${g === 'LA'}">🐄 สัตว์ใหญ่</button>
-      </div>
+      </div>`}
       ${formHTML(FIELDS.head, rec, ro)}
       <div style="height:8px"></div>${formHTML(FIELDS['quick' + g], rec, ro)}
       <div style="height:8px"></div>${formHTML([testsField(g), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' }], rec, ro)}
