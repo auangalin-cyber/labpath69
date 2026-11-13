@@ -521,6 +521,11 @@ function dropQ(q) { S.queue = S.queue.filter(x => x.qid !== q.qid); saveQueue();
 /** ใส่/แทนแถวในข้อมูลเครื่อง (server=true → ข้อมูลจากเซิร์ฟเวอร์) */
 function upsertLocal(sheet, rec, server) {
   const arr = S.data[sheet];
+  if (server && isDel(rec)) { // ถูกลบออกจากชีตแล้ว → เอาออกจากเครื่องด้วย (ลบเคส = ลบผลแลปของเคสนั้นด้วย)
+    S.data[sheet] = arr.filter(r => r.id !== rec.id);
+    if (sheet === 'Cases') ['SA_Results', 'LA_Results'].forEach(n => { if (S.data[n]) S.data[n] = S.data[n].filter(r => r.caseId !== rec.id); });
+    saveCache(); return;
+  }
   const i = arr.findIndex(r => r.id === rec.id);
   if (server) rec = Object.assign({}, rec); // ลบสถานะ _pending
   if (i >= 0) arr[i] = Object.assign(server ? {} : arr[i], rec); else arr.push(rec);
@@ -2126,7 +2131,7 @@ function drawInfoTab(body, c, ro, setDirty) {
       refreshView();
     };
     if ($('#delCase', body)) $('#delCase', body).onclick = async () => {
-      if (!await confirmBox('ลบเคสนี้?', `เคส ${esc(c.sampleNo || '')} และผลแลปทั้งหมดของเคสจะถูกซ่อน (ยังกู้คืนได้จาก Google Sheet คอลัมน์ deleted)`, 'ลบเคส', 'danger')) return;
+      if (!await confirmBox('ลบเคสนี้?', `เคส ${esc(c.sampleNo || '')} และผลแลปทั้งหมดของเคสจะถูกลบออกจาก Google Sheet จริง (กู้คืนไม่ได้ · มีบันทึกไว้ในชีต AuditLog) · เลข ${esc(c.sampleNo || '')} จะถูกนำไปใช้กับตัวอย่างถัดไป`, 'ลบเคส', 'danger')) return;
       await removeRecord('Cases', c.id);
       store.del(dkey); toast('ลบเคสแล้ว', 'ok'); go('#/search');
     };
