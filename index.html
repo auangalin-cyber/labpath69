@@ -226,7 +226,8 @@ table.tbl td.n,table.tbl th.n{text-align:right}
 .login .box{background:#fff;border-radius:8px;padding:22px;width:min(440px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--pink)}
 .login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .login-hd .mark{font-size:14px;padding:4px 8px}
-.qfull{color:#b91c1c;font-weight:700}.tbl tr.grp td{background:rgba(100,116,139,.13)}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
+.qfull{color:#b91c1c;font-weight:700}.tbl tr.grp td{background:rgba(100,116,139,.13)}
+.pies{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:6px 0 18px}.pies svg{flex:none}.pielg{list-style:none;padding:0;margin:0;flex:1;min-width:230px}.pielg li{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px dashed rgba(100,116,139,.25)}.pielg .dot{width:12px;height:12px;border-radius:3px;flex:none;align-self:center}.pielg .v{margin-left:auto;white-space:nowrap}.minipies{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin:6px 0 18px}.minipie{text-align:center}.minipie .t{font-size:13px;font-weight:600;margin-top:4px}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
 .login-logo{display:block;width:min(240px,75%);height:auto;margin:0 auto 12px}
 .login-logo+.login-hd{justify-content:center;text-align:center}
 header.top .logo img{height:32px;width:auto;background:#fff;border-radius:4px;padding:1px 2px;display:block}
@@ -2618,29 +2619,48 @@ function kitStats(list) {
 
 /** สรุป "ตรวจแล้วเจออะไร" แยกตามชนิดการตรวจ — % คิดจากจำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว */
 function findingsHTML(list) {
-  const row = (name, x, n, it) => `<tr><td>${it ? '<i>' + esc(name) + '</i>' : esc(name)}</td><td class="n mono">${x}</td><td class="n mono">${n}</td><td class="n mono"><b>${n ? pct(x / n) : '-'}</b></td><td><div class="cibar"><i style="width:${n ? (x / n * 100).toFixed(1) : 0}%"></i></div></td></tr>`;
-  const head = (t, sub) => `<tr class="grp"><td colspan="5"><b>${esc(t)}</b> <span class="small muted">— ${esc(sub)}</span></td></tr>`;
+  const PAL = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d', '#b45309', '#4f46e5', '#0d9488', '#be123c'];
+  const GREY = '#cbd5e1';
+  // กราฟวงกลม SVG: items = [{label, v, color}]
+  const pie = (items, size) => {
+    const tot = items.reduce((a, b) => a + b.v, 0), r = size / 2, c = r;
+    if (!tot) return '';
+    let a0 = -Math.PI / 2;
+    const segs = items.filter(i => i.v > 0).map(i => {
+      const fr = i.v / tot, tip = `<title>${esc(i.label)}: ${i.v}</title>`;
+      if (fr >= 0.9999) return `<circle cx="${c}" cy="${c}" r="${r}" fill="${i.color}">${tip}</circle>`;
+      const a1 = a0 + fr * 2 * Math.PI, p = a => (c + r * Math.cos(a)).toFixed(2) + ' ' + (c + r * Math.sin(a)).toFixed(2);
+      const d = `M${c} ${c} L${p(a0)} A${r} ${r} 0 ${fr > 0.5 ? 1 : 0} 1 ${p(a1)} Z`;
+      a0 = a1;
+      return `<path d="${d}" fill="${i.color}" stroke="#fff" stroke-width="1">${tip}</path>`;
+    }).join('');
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" role="img" aria-label="${esc(items.map(i => i.label + ' ' + i.v).join(', '))}">${segs}</svg>`;
+  };
   const org = (title, sec, field) => {
     const p = organismPrev(list, sec, field);
-    if (!p.n) return head(title, 'ยังไม่มีผลการตรวจ');
-    return head(title, `ตรวจแล้ว ${p.n} ตัวอย่าง · พบอย่างน้อย 1 ชนิด ${p.any} (${pct(p.any / p.n)}%)`) +
-      p.items.map(([k, x]) => row(k, x, p.n, true)).join('') + row('ไม่พบเชื้อ / ปรสิต', p.n - p.any, p.n);
+    if (!p.n) return `<h3 style="margin:10px 0 4px">${esc(title)}</h3><div class="empty small" style="margin-bottom:14px">ยังไม่มีผลการตรวจ</div>`;
+    const items = p.items.map(([k, x], i) => ({ label: k, v: x, color: PAL[i % PAL.length], it: true }));
+    if (p.n - p.any > 0) items.push({ label: 'ไม่พบเชื้อ / ปรสิต', v: p.n - p.any, color: GREY });
+    const multi = p.items.reduce((a, b) => a + b[1], 0) > p.any;
+    return `<h3 style="margin:10px 0 4px">${esc(title)} <span class="small muted">— ตรวจแล้ว ${p.n} ตัวอย่าง · พบอย่างน้อย 1 ชนิด ${p.any} (${pct(p.any / p.n)}%)</span></h3>
+      <div class="pies">${pie(items, 170)}<ul class="pielg">${items.map(i => `<li><span class="dot" style="background:${i.color}"></span><span>${i.it ? '<i>' + esc(i.label) + '</i>' : esc(i.label)}</span><span class="v mono">${i.v}/${p.n} · <b>${pct(i.v / p.n)}%</b></span></li>`).join('')}</ul></div>
+      ${multi ? '<p class="small muted" style="margin-top:-10px">มีตัวอย่างที่พบมากกว่า 1 ชนิด — ขนาดชิ้นในกราฟแบ่งตามจำนวนครั้งที่พบ ส่วน % ด้านขวาคิดจากจำนวนตัวอย่างที่ตรวจ จึงรวมกันเกิน 100 ได้</p>' : ''}`;
   };
+  const mini = (label, pos, n) => `<div class="minipie">${pie([{ label: 'Positive', v: pos, color: '#dc2626' }, { label: 'Negative', v: n - pos, color: GREY }], 84)}
+    <div class="t">${esc(label)}</div><div class="small mono">Positive ${pos}/${n} · <b>${pct(pos / n)}%</b></div></div>`;
   const ks = kitStats(list).filter(k => k.n);
   const res = list.map(c => resultRow(c)).filter(Boolean);
   const pn = v => v === 'Positive' || v === 'Negative';
   const sat = res.filter(r => pn(r.sat)), fl = res.filter(r => pn(r.oc_fluo_od) || pn(r.oc_fluo_os));
+  const others = (sat.length ? mini('Saline Agglutination Test', sat.filter(r => r.sat === 'Positive').length, sat.length) : '') +
+    (fl.length ? mini('Fluorescein (ตาข้างใดข้างหนึ่ง)', fl.filter(r => r.oc_fluo_od === 'Positive' || r.oc_fluo_os === 'Positive').length, fl.length) : '');
   return `<div class="card"><h2>ตรวจแล้วเจออะไรบ้าง — แยกตามชนิดการตรวจ</h2>
-    <div class="tblwrap"><table class="tbl"><thead><tr><th>ผลที่พบ</th><th class="n">พบ (ตัวอย่าง)</th><th class="n">ตรวจทั้งหมด</th><th class="n">% ของที่ตรวจ</th><th style="width:28%">กราฟ</th></tr></thead><tbody>
     ${org('Blood parasite', 'bp', 'bp_result')}
     ${org('Fecal exam', 'feces', 'fec_result')}
-    ${head('Test kit', ks.length ? 'นับเฉพาะที่อ่านผลได้ (Positive + Negative) ของแต่ละชุดตรวจ' : 'ยังไม่มีผลการตรวจ')}
-    ${ks.map(k => row(k.f.label + ' — Positive', k.pos, k.n)).join('')}
-    ${sat.length || fl.length ? head('อื่น ๆ', 'ผลที่เป็น Positive / Negative') : ''}
-    ${sat.length ? row('Saline Agglutination Test — Positive', sat.filter(r => r.sat === 'Positive').length, sat.length) : ''}
-    ${fl.length ? row('Fluorescein — Positive (ตาข้างใดข้างหนึ่ง)', fl.filter(r => r.oc_fluo_od === 'Positive' || r.oc_fluo_os === 'Positive').length, fl.length) : ''}
-    </tbody></table></div>
-    <p class="small muted">% = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว × 100 · ตัวอย่างหนึ่งพบได้หลายเชื้อ ผลรวม % จึงเกิน 100 ได้ · ตามตัวกรองด้านบน · รายละเอียดพร้อม 95% CI ดูที่แท็บพยาธิทางเดินอาหาร / พยาธิในเม็ดเลือด / Test kit</p></div>`;
+    <h3 style="margin:10px 0 4px">Test kit <span class="small muted">— นับเฉพาะที่อ่านผลได้ (Positive + Negative) · <span style="color:#dc2626">■</span> Positive <span style="color:${GREY}">■</span> Negative</span></h3>
+    ${ks.length ? `<div class="minipies">${ks.map(k => mini(k.f.label, k.pos, k.n)).join('')}</div>` : '<div class="empty small" style="margin-bottom:14px">ยังไม่มีผลการตรวจ</div>'}
+    ${others ? `<h3 style="margin:10px 0 4px">อื่น ๆ</h3><div class="minipies">${others}</div>` : ''}
+    <p class="small muted">% = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว × 100 · ตามตัวกรองด้านบน · ตารางพร้อม 95% CI ดูที่แท็บพยาธิทางเดินอาหาร / พยาธิในเม็ดเลือด / Test kit</p></div>`;
 }
 
 function VIEWS_reports(el, tab) {
