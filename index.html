@@ -226,7 +226,7 @@ table.tbl td.n,table.tbl th.n{text-align:right}
 .login .box{background:#fff;border-radius:8px;padding:22px;width:min(440px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--pink)}
 .login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .login-hd .mark{font-size:14px;padding:4px 8px}
-.qfull{color:#b91c1c;font-weight:700}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
+.qfull{color:#b91c1c;font-weight:700}.tbl tr.grp td{background:rgba(100,116,139,.13)}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
 .login-logo{display:block;width:min(240px,75%);height:auto;margin:0 auto 12px}
 .login-logo+.login-hd{justify-content:center;text-align:center}
 header.top .logo img{height:32px;width:auto;background:#fff;border-radius:4px;padding:1px 2px;display:block}
@@ -2616,6 +2616,33 @@ function kitStats(list) {
   });
 }
 
+/** สรุป "ตรวจแล้วเจออะไร" แยกตามชนิดการตรวจ — % คิดจากจำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว */
+function findingsHTML(list) {
+  const row = (name, x, n, it) => `<tr><td>${it ? '<i>' + esc(name) + '</i>' : esc(name)}</td><td class="n mono">${x}</td><td class="n mono">${n}</td><td class="n mono"><b>${n ? pct(x / n) : '-'}</b></td><td><div class="cibar"><i style="width:${n ? (x / n * 100).toFixed(1) : 0}%"></i></div></td></tr>`;
+  const head = (t, sub) => `<tr class="grp"><td colspan="5"><b>${esc(t)}</b> <span class="small muted">— ${esc(sub)}</span></td></tr>`;
+  const org = (title, sec, field) => {
+    const p = organismPrev(list, sec, field);
+    if (!p.n) return head(title, 'ยังไม่มีผลการตรวจ');
+    return head(title, `ตรวจแล้ว ${p.n} ตัวอย่าง · พบอย่างน้อย 1 ชนิด ${p.any} (${pct(p.any / p.n)}%)`) +
+      p.items.map(([k, x]) => row(k, x, p.n, true)).join('') + row('ไม่พบเชื้อ / ปรสิต', p.n - p.any, p.n);
+  };
+  const ks = kitStats(list).filter(k => k.n);
+  const res = list.map(c => resultRow(c)).filter(Boolean);
+  const pn = v => v === 'Positive' || v === 'Negative';
+  const sat = res.filter(r => pn(r.sat)), fl = res.filter(r => pn(r.oc_fluo_od) || pn(r.oc_fluo_os));
+  return `<div class="card"><h2>ตรวจแล้วเจออะไรบ้าง — แยกตามชนิดการตรวจ</h2>
+    <div class="tblwrap"><table class="tbl"><thead><tr><th>ผลที่พบ</th><th class="n">พบ (ตัวอย่าง)</th><th class="n">ตรวจทั้งหมด</th><th class="n">% ของที่ตรวจ</th><th style="width:28%">กราฟ</th></tr></thead><tbody>
+    ${org('Blood parasite', 'bp', 'bp_result')}
+    ${org('Fecal exam', 'feces', 'fec_result')}
+    ${head('Test kit', ks.length ? 'นับเฉพาะที่อ่านผลได้ (Positive + Negative) ของแต่ละชุดตรวจ' : 'ยังไม่มีผลการตรวจ')}
+    ${ks.map(k => row(k.f.label + ' — Positive', k.pos, k.n)).join('')}
+    ${sat.length || fl.length ? head('อื่น ๆ', 'ผลที่เป็น Positive / Negative') : ''}
+    ${sat.length ? row('Saline Agglutination Test — Positive', sat.filter(r => r.sat === 'Positive').length, sat.length) : ''}
+    ${fl.length ? row('Fluorescein — Positive (ตาข้างใดข้างหนึ่ง)', fl.filter(r => r.oc_fluo_od === 'Positive' || r.oc_fluo_os === 'Positive').length, fl.length) : ''}
+    </tbody></table></div>
+    <p class="small muted">% = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว × 100 · ตัวอย่างหนึ่งพบได้หลายเชื้อ ผลรวม % จึงเกิน 100 ได้ · ตามตัวกรองด้านบน · รายละเอียดพร้อม 95% CI ดูที่แท็บพยาธิทางเดินอาหาร / พยาธิในเม็ดเลือด / Test kit</p></div>`;
+}
+
 function VIEWS_reports(el, tab) {
   if (!isStaff()) { el.innerHTML = '<div class="card empty">หน้านี้สำหรับ Lab-path / Admin</div>'; return; }
   tab = ['sum', 'fecal', 'bp', 'kit', 'export'].includes(tab) ? tab : 'sum';
@@ -2636,6 +2663,7 @@ function VIEWS_reports(el, tab) {
           ${TESTS.map(t => { const L = list.map(c => ({ c, g: c.animalGroup === 'LA' ? 'LA' : 'SA', row: resultRow(c) })).filter(o => hasData(o.g, t.k, o.row));
             return `<tr><td>${esc(t.label)}</td>${days.map(d => `<td class="n mono">${L.filter(o => Number(o.c.campDay) === d).length || ''}</td>`).join('')}<td class="n mono"><b>${L.length}</b></td><td class="n mono">${L.filter(o => isPositive(o.g, t.k, o.row)).length}</td></tr>`; }).join('')}
           </tbody></table></div></div>
+        ${findingsHTML(list)}
         <div class="card"><h2>กลุ่มที่บันทึก (ตามกลุ่มนิสิต)</h2><div class="tblwrap"><table class="tbl"><thead><tr><th>กลุ่ม</th><th class="n">ตัวอย่าง</th><th class="n">ตรวจสอบแล้ว</th></tr></thead><tbody>
           ${groupList().map(gp => { const L = list.filter(c => String(c.group) === gp); return L.length ? `<tr><td>กลุ่ม ${gp}</td><td class="n mono">${L.length}</td><td class="n mono">${L.filter(c => c.status === ST.VERIFIED).length}</td></tr>` : ''; }).join('') || '<tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>'}
           </tbody></table></div></div>`;
