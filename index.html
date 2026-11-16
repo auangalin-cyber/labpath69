@@ -227,6 +227,7 @@ table.tbl td.n,table.tbl th.n{text-align:right}
 .login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .login-hd .mark{font-size:14px;padding:4px 8px}
 .qfull{color:#b91c1c;font-weight:700}.tbl tr.grp td{background:rgba(100,116,139,.13)}
+.kpilist{list-style:none;padding:0;margin:0}.kpilist li{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px dashed rgba(100,116,139,.25)}.kpilist .rk{width:22px;color:#64748b;flex:none}.kpilist .v{margin-left:auto;white-space:nowrap}.kpiday{margin:10px 0 14px}.kpiday h3{margin:0 0 4px}
 .pies{display:flex;flex-wrap:wrap;gap:18px;align-items:center;margin:6px 0 18px}.pies svg{flex:none}.pielg{list-style:none;padding:0;margin:0;flex:1;min-width:230px}.pielg li{display:flex;gap:8px;align-items:baseline;padding:3px 0;border-bottom:1px dashed rgba(100,116,139,.25)}.pielg .dot{width:12px;height:12px;border-radius:3px;flex:none;align-self:center}.pielg .v{margin-left:auto;white-space:nowrap}.minipies{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin:6px 0 18px}.minipie{text-align:center}.minipie .t{font-size:13px;font-weight:600;margin-top:4px}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
 .login-logo{display:block;width:min(240px,75%);height:auto;margin:0 auto 12px}
 .login-logo+.login-hd{justify-content:center;text-align:center}
@@ -2663,9 +2664,80 @@ function findingsHTML(list) {
     <p class="small muted">% = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจนั้นแล้ว × 100 · ตามตัวกรองด้านบน · ตารางพร้อม 95% CI ดูที่แท็บพยาธิทางเดินอาหาร / พยาธิในเม็ดเลือด / Test kit</p></div>`;
 }
 
+/* ---------- KPI สรุปผลรายวัน (PBL) — สัตว์ใหญ่ / สัตว์เล็ก ---------- */
+/** แปลงเคส (และแถวสำรวจ BP โคแบบกรอกเป็นชุด) เป็นรายการกลาง: {g, day, unit, farm, req[], done{}, f[{name, sec}]} */
+function kpiItems(list, f) {
+  const out = [], ids = new Set(list.map(c => c.id)), pn = v => v === 'Positive' || v === 'Negative';
+  list.forEach(c => {
+    const g = c.animalGroup === 'LA' ? 'LA' : 'SA', row = resultRow(c);
+    const it = { g, day: Number(c.campDay), unit: c.unit, farm: c.farmName || '(ไม่ระบุฟาร์ม)', req: requestedTests(c), done: {}, f: [] };
+    [['bp', 'bp_result'], ['feces', 'fec_result']].forEach(([sec, fld]) => {
+      if (!hasData(g, sec, row)) return;
+      it.done[sec] = true;
+      [...new Set(splitMulti(row[fld]).filter(x => x !== 'ไม่พบ'))].forEach(x => it.f.push({ name: x, sec }));
+    });
+    if (row && g === 'SA') {
+      SECTIONS.SA.kit.filter(k => k.k !== 'kit_setting').forEach(k => { if (pn(row[k.k])) { it.done[k.k] = true; if (row[k.k] === 'Positive') it.f.push({ name: k.label + ' Positive', sec: k.k }); } });
+      if (pn(row.sat)) { it.done.sat = true; if (row.sat === 'Positive') it.f.push({ name: 'Saline Agglutination Test Positive', sec: 'sat' }); }
+    }
+    out.push(it);
+  });
+  // สำรวจ Blood parasite โคแบบกรอกเป็นชุด (ไม่นับซ้ำกับเคสที่ผูก caseId)
+  if (!f.sp || f.sp === 'โค/สัตว์ใหญ่') rows('BloodParasite_Cattle').forEach(r => {
+    if (r.caseId && ids.has(r.caseId)) return;
+    if ((f.day && String(r.campDay) !== String(f.day)) || (f.unit && r.unit !== f.unit)) return;
+    out.push({ g: 'LA', day: Number(r.campDay), unit: r.unit, farm: r.farmName || '(ไม่ระบุฟาร์ม)', req: ['bp'], done: { bp: true }, survey: true,
+      f: PATHO.filter(p => isPos(r[p.k])).map(p => ({ name: p.name.replace(/\s*\(.*$/, ''), sec: 'bp' })) });
+  });
+  return out;
+}
+/** จัดอันดับสิ่งที่พบ มาก → น้อย · n = จำนวนตัวอย่างที่ลงผลการตรวจชนิดนั้นแล้ว */
+function kpiRank(items) {
+  const m = {};
+  items.forEach(it => it.f.forEach(x => { const k = x.sec + '|' + x.name; (m[k] = m[k] || { name: x.name, sec: x.sec, x: 0 }).x++; }));
+  return Object.values(m).map(o => Object.assign(o, { n: items.filter(it => it.done[o.sec]).length })).sort((a, b) => b.x - a.x || a.name.localeCompare(b.name));
+}
+function kpiHTML(list, f) {
+  const all = kpiItems(list, f), days = campDays();
+  const rankHTML = (items, max) => {
+    const rk = kpiRank(items), shown = max ? rk.slice(0, max) : rk;
+    const tested = items.filter(it => Object.keys(it.done).length).length;
+    if (!tested) return '<div class="small muted">ยังไม่มีผลการตรวจ</div>';
+    if (!rk.length) return '<div class="small muted">ลงผลแล้ว ' + tested + ' ตัวอย่าง — ไม่พบเชื้อ / ผลบวก</div>';
+    return `<ol class="kpilist">${shown.map((o, i) => `<li><span class="rk mono">${i + 1}.</span><span><i>${esc(o.name)}</i></span><span class="v mono">${o.x}/${o.n} · <b>${pct(o.x / o.n)}%</b></span></li>`).join('')}</ol>${rk.length > shown.length ? `<div class="small muted">และอีก ${rk.length - shown.length} รายการ</div>` : ''}`;
+  };
+  const reqHTML = items => {
+    const n = items.length;
+    const rowsH = TESTS.map(t => ({ t, x: items.filter(it => it.req.includes(t.k)).length })).filter(o => o.x).sort((a, b) => b.x - a.x)
+      .map(o => `<tr><td>${esc(o.t.label)}</td><td class="n mono">${o.x}</td><td class="n mono"><b>${pct(o.x / n)}</b></td><td><div class="cibar"><i style="width:${(o.x / n * 100).toFixed(1)}%"></i></div></td></tr>`).join('');
+    return `<div class="tblwrap"><table class="tbl"><thead><tr><th>ส่งตรวจ</th><th class="n">จำนวนตัวอย่าง</th><th class="n">% ของตัวอย่างทั้งหมด</th><th style="width:30%">กราฟ</th></tr></thead><tbody>${rowsH || '<tr><td colspan="4" class="muted">ยังไม่มีข้อมูล</td></tr>'}</tbody></table></div>
+      <p class="small muted">ตัวอย่างหนึ่งส่งตรวจได้หลายอย่าง ผลรวม % จึงเกิน 100 ได้</p>`;
+  };
+  const byDayHTML = items => days.map(d => { const L = items.filter(it => it.day === d); return L.length ? `<div class="kpiday"><h3>Day ${d} <span class="small muted">— ${L.length} ตัวอย่าง${S.campDates[d] ? ' · ' + esc(S.campDates[d]) : ''}</span></h3>${rankHTML(L)}</div>` : ''; }).join('') || '<div class="small muted">ยังไม่มีข้อมูล</div>';
+  const stat = (n, t) => `<div class="stat"><div class="n">${n}</div><div class="t">${t}</div></div>`;
+  const section = (g, title) => {
+    const items = all.filter(it => it.g === g), n = items.length;
+    if (!n) return `<h2 style="margin-top:18px">${title}</h2><div class="card empty">ยังไม่มีตัวอย่างตามตัวกรอง</div>`;
+    const tested = items.filter(it => Object.keys(it.done).length).length;
+    const farms = [...new Set(items.map(it => it.farm))].sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+    const units = S.units.map(u => ({ u, x: items.filter(it => it.unit === u.code).length })).filter(o => o.x);
+    const surveyN = items.filter(it => it.survey).length;
+    return `<h2 style="margin-top:18px">${title}</h2>
+      <div class="stats">${stat(n, '1. ส่งตัวอย่างทั้งหมด (ตัว)')}${g === 'LA' ? stat(farms.length, '2. จำนวนฟาร์ม') : ''}${stat(tested, 'ลงผลแล้ว (ตัว)')}${stat(n - tested, 'ยังไม่ลงผล (ตัว)')}</div>
+      ${g === 'SA' ? `<div class="card"><h2>2. จำนวนตัวอย่างแยกตามหน่วย</h2><div class="tblwrap"><table class="tbl"><thead><tr><th>หน่วย</th>${days.map(d => `<th class="n">Day ${d}</th>`).join('')}<th class="n">รวม</th><th class="n">%</th></tr></thead><tbody>
+        ${units.map(o => `<tr><td><b>${esc(o.u.code)}</b> ${esc(o.u.name)}</td>${days.map(d => `<td class="n mono">${items.filter(it => it.unit === o.u.code && it.day === d).length || ''}</td>`).join('')}<td class="n mono"><b>${o.x}</b></td><td class="n mono">${pct(o.x / n)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
+      <div class="card"><h2>3. ตัวอย่างทั้งหมดส่งตรวจอะไรบ้าง</h2>${reqHTML(items)}${surveyN ? `<p class="small muted">รวมตัวอย่างสำรวจ Blood parasite โคแบบกรอกเป็นชุด ${surveyN} ตัว (นับเป็นส่งตรวจ Blood parasite)</p>` : ''}</div>
+      ${g === 'LA' ? `<div class="card"><h2>4.1 ผลตรวจรายฟาร์ม — ฟาร์มนี้เจออะไรเยอะ</h2><div class="tblwrap"><table class="tbl"><thead><tr><th>ฟาร์ม</th><th class="n">ตัวอย่าง</th><th>ที่พบ (มาก → น้อย · พบ/ตรวจ)</th></tr></thead><tbody>
+        ${farms.map(fm => { const L = items.filter(it => it.farm === fm); return `<tr><td><b>${esc(fm)}</b></td><td class="n mono">${L.length}</td><td>${rankHTML(L, 5)}</td></tr>`; }).join('')}</tbody></table></div></div>` : ''}
+      <div class="card"><h2>${g === 'LA' ? '4.2' : '4.'} ผลตรวจรายวัน — วันนี้เจออะไรบ้าง (มาก → น้อย)</h2>${byDayHTML(items)}</div>`;
+  };
+  return `<div class="alert info small">สรุปสำหรับนำเสนอ PBL · เลือก "วัน" ด้านบนเพื่อดูเฉพาะวันนั้น · ตัวเลข "พบ/ตรวจ" = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจชนิดนั้นแล้ว</div>
+    ${!f.sp || f.sp === 'โค/สัตว์ใหญ่' ? section('LA', '🐄 สัตว์ใหญ่') : ''}${f.sp === 'โค/สัตว์ใหญ่' ? '' : section('SA', '🐕 สัตว์เล็ก')}`;
+}
+
 function VIEWS_reports(el, tab) {
   if (!isStaff()) { el.innerHTML = '<div class="card empty">หน้านี้สำหรับ Lab-path / Admin</div>'; return; }
-  tab = ['sum', 'fecal', 'bp', 'kit', 'export'].includes(tab) ? tab : 'sum';
+  tab = ['sum', 'kpi', 'fecal', 'bp', 'kit', 'export'].includes(tab) ? tab : 'sum';
   const draw = () => {
     const f = repFilters(), list = repCases(f);
     const sel = (k, label, opts) => `<div class="fld"><label>${label}</label><select data-rf="${k}"><option value="">ทั้งหมด</option>${opts.map(([v, t]) => `<option value="${esc(v)}" ${String(f[k]) === String(v) ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
@@ -2687,6 +2759,8 @@ function VIEWS_reports(el, tab) {
         <div class="card"><h2>กลุ่มที่บันทึก (ตามกลุ่มนิสิต)</h2><div class="tblwrap"><table class="tbl"><thead><tr><th>กลุ่ม</th><th class="n">ตัวอย่าง</th><th class="n">ตรวจสอบแล้ว</th></tr></thead><tbody>
           ${groupList().map(gp => { const L = list.filter(c => String(c.group) === gp); return L.length ? `<tr><td>กลุ่ม ${gp}</td><td class="n mono">${L.length}</td><td class="n mono">${L.filter(c => c.status === ST.VERIFIED).length}</td></tr>` : ''; }).join('') || '<tr><td colspan="3" class="muted">ยังไม่มีข้อมูล</td></tr>'}
           </tbody></table></div></div>`;
+    } else if (tab === 'kpi') {
+      body = kpiHTML(list, f);
     } else if (tab === 'fecal') {
       body = (f.sp ? '' : `<div class="alert info small">แยกตามชนิดสัตว์: เลือก "ชนิดสัตว์" ด้านบน (สุนัข / แมว / โค)</div>`) +
         prevTableHTML(organismPrev(list, 'feces', 'fec_result'), 'ความชุกพยาธิทางเดินอาหาร (Fecal exam)') +
@@ -2712,7 +2786,7 @@ function VIEWS_reports(el, tab) {
           <p class="small muted">สรุปแยกตามชนิดสัตว์ · มี 95% CI (Wilson) · ไม่มีข้อมูลระบุตัวตน</p></div>`;
     }
     el.innerHTML = `<h1>รายงาน / Export <span class="small muted">สำหรับ Lab-path</span></h1>
-      <nav class="tabs">${[['sum', '📋 สรุป'], ['fecal', '💩 พยาธิทางเดินอาหาร'], ['bp', '🩸 พยาธิในเม็ดเลือด'], ['kit', '🧪 Test kit'], ['export', '⬇ Export CSV']]
+      <nav class="tabs">${[['sum', '📋 สรุป'], ['kpi', '🎯 KPI รายวัน'], ['fecal', '💩 พยาธิทางเดินอาหาร'], ['bp', '🩸 พยาธิในเม็ดเลือด'], ['kit', '🧪 Test kit'], ['export', '⬇ Export CSV']]
         .map(([k, t]) => `<a href="#/reports/${k}" class="${k === tab ? 'act' : ''}">${t}</a>`).join('')}</nav>
       <div class="card"><div class="grid">${sel('day', 'วัน', campDays().map(d => [d, 'Day ' + d]))}${sel('unit', 'หน่วย', S.units.map(u => [u.code, u.code + ' — ' + u.name]))}${sel('sp', 'ชนิดสัตว์', sps.map(s => [s, s]))}</div></div>
       ${body}`;
