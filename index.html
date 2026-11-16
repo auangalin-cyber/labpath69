@@ -226,6 +226,7 @@ table.tbl td.n,table.tbl th.n{text-align:right}
 .login .box{background:#fff;border-radius:8px;padding:22px;width:min(440px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25);border-top:5px solid var(--pink)}
 .login-hd{display:flex;gap:10px;align-items:center;margin-bottom:14px}
 .login-hd .mark{font-size:14px;padding:4px 8px}
+.qfull{color:#b91c1c;font-weight:700}.amtrow{display:flex;gap:8px;align-items:center;margin-top:6px}.amtrow label{min-width:96px;font-weight:600;margin:0}.amtrow input{flex:1;min-width:0}
 .login-logo{display:block;width:min(240px,75%);height:auto;margin:0 auto 12px}
 .login-logo+.login-hd{justify-content:center;text-align:center}
 header.top .logo img{height:32px;width:auto;background:#fff;border-radius:4px;padding:1px 2px;display:block}
@@ -408,6 +409,15 @@ function applySettings(rows) {
       case 'list': (S.lists[k] = S.lists[k] || []).push(String(r.label ?? r.value)); break;
     }
   });
+  // ตัวเลือกผล Blood parasite โค (ในเคสรายตัว) ต้องมีครบทุกเชื้อของตารางความชุก
+  try {
+    const L = S.lists.bp_result_LA;
+    if (L) {
+      const low = L.map(x => x.toLowerCase());
+      const add = PATHO.filter(p => !low.some(x => x.startsWith(pathoKey(p)))).map(p => p.name);
+      const i = L.indexOf('อื่น ๆ'); L.splice(i < 0 ? L.length : i, 0, ...add);
+    }
+  } catch (e) { /* PATHO ยังไม่พร้อมตอนโหลดครั้งแรก */ }
 }
 const campDays = () => { const n = Number(S.cfg.campDays) || Object.keys(S.campDates).length || 5; return Array.from({length: n}, (_, i) => i + 1); };
 const groupList = () => Array.from({ length: Number(S.cfg.groupCount) || 14 }, (_, i) => String(i + 1));
@@ -858,6 +868,11 @@ function formHTML(fields, rec, ro) { return `<div class="grid">${fields.map(f =>
 function readForm(root, fields) {
   const o = {};
   fields.forEach(f => {
+    if (f.type === 'amounts') { // ปริมาณแยกตามชนิดตัวอย่าง → "Blood: 1 ml; Fecal: 5 g"
+      if (!$('#amtBox', root)) return;
+      o[f.k] = $$('[data-amt]', root).filter(i => i.value.trim()).map(i => i.dataset.amt + ': ' + i.value.trim().replace(/;/g, ',')).join('; ');
+      return;
+    }
     const box = $(`[data-chips="${f.k}"]`, root);
     if (box) {
       const v = $$('input:checked', box).map(i => i.value);
@@ -878,7 +893,11 @@ function validateForm(root, fields, vals) {
   const errs = [];
   fields.forEach(f => {
     let msg = '';
-    if (f.req && (vals[f.k] === '' || vals[f.k] == null)) msg = 'จำเป็นต้องกรอก';
+    if (f.type === 'amounts') {
+      const ts = splitMulti(vals.sampleTypes), a = parseAmounts(vals[f.k], ts), miss = ts.filter(t => !a[t]);
+      if (miss.length) msg = 'กรอกปริมาณของ ' + miss.join(', ');
+    }
+    else if (f.req && (vals[f.k] === '' || vals[f.k] == null)) msg = 'จำเป็นต้องกรอก';
     else if (f.type === 'num' && vals[f.k] !== '' && typeof vals[f.k] !== 'number') msg = 'ต้องเป็นตัวเลข';
     if (msg) {
       errs.push(f.label + ': ' + msg);
@@ -1235,7 +1254,7 @@ function VIEWS_search(el, qs) {
     const all = rows('Cases'), td = todayDay(), cnt = countBy(all);
     const today = td ? all.filter(c => Number(c.campDay) === td).length : 0;
     const sa = all.filter(c => c.animalGroup !== 'LA').length, la = all.length - sa;
-    const bp = rows('BloodParasite_Cattle').length;
+    const bp = cattleAll().length;
     const card = (cls, n, t, f) => `<a class="stat ${cls}" href="#" data-f='${JSON.stringify(f)}'><div class="n">${n}</div><div class="t">${t}</div></a>`;
     $('#sStats').innerHTML = `<div class="stats">
       ${card('s-all', cnt.all, 'ตัวอย่างทั้งหมด', { day: '', status: '', grp: '' })}
@@ -1300,6 +1319,18 @@ function bindCaseForm(root, getState, setState) {
     vals.tests = splitMulti(vals.tests).filter(l => { const t = testByLabel(l); return t && (g !== 'LA' || t.la); }).join('; ');
     setState(Object.assign(st, vals, { animalGroup: g }));
   });
+  // เลือกชนิดตัวอย่าง → ช่องปริมาณของแต่ละชนิดขึ้นตาม · โควตาสัตว์เล็กอัปเดตตามวัน/หน่วย
+  const stBox = $('[data-chips="sampleTypes"]', root), amtBox = $('#amtBox', root);
+  if (stBox && amtBox) stBox.addEventListener('change', () => {
+    const cur = {}; $$('[data-amt]', amtBox).forEach(i => cur[i.dataset.amt] = i.value);
+    amtBox.innerHTML = amountsInner($$('input:checked', stBox).map(i => i.value), cur, false);
+  });
+  const qBox = $('#quotaBox', root);
+  if (qBox) root.addEventListener('change', () => setTimeout(() => { // wait for single-select chips to settle
+    if (!qBox.isConnected) return;
+    const st = getState(), v = readForm(root, [FIELDS.head[0], FIELDS.head[1]]);
+    qBox.innerHTML = quotaHTML(v.campDay, v.unit, st.id, st.animalGroup);
+  }, 0));
   const gps = $('#gpsBtn', root);
   if (gps) gps.onclick = () => {
     if (!navigator.geolocation) return toast('เครื่องนี้ไม่รองรับ GPS', 'err');
@@ -1319,7 +1350,7 @@ function VIEWS_new(el, mode, fromId) {
   const blank = () => {
     const day = todayDay() || S.viewDay || 1;
     const pu = prefUnit(), u = unitInfo(pu);
-    return { animalGroup: u.group === 'LA' ? 'LA' : 'SA', species: u.species || '', campDay: day, unit: pu, group: s.group, recorder: s.user,
+    return { animalGroup: u.group === 'LA' ? 'LA' : 'SA', species: u.species || '', ageUnit: 'ปี', campDay: day, unit: pu, group: s.group, recorder: s.user,
       queueNo: pu ? nextQueueNo(day, pu, s.group) : '',
       // ที่อยู่ตั้งต้นของพื้นที่ค่าย (แก้ได้ใน Settings: defaultSubdistrict / defaultDistrict / defaultProvince)
       subdistrict: S.cfg.defaultSubdistrict || '', district: S.cfg.defaultDistrict || '', province: S.cfg.defaultProvince || '' };
@@ -1360,6 +1391,7 @@ function VIEWS_new(el, mode, fromId) {
     if (!isStaff()) vals.group = s.group; // สมาชิก: ติดกลุ่มของผู้บันทึก (เซิร์ฟเวอร์บังคับซ้ำอีกชั้น)
     setPrefUnit(vals.unit);
     if (validateForm(form, fields, vals).length) return toast('กรุณากรอกช่องที่จำเป็นให้ครบ', 'err');
+    const qm = quotaBlock(vals, null); if (qm) return toast(qm, 'err', 7000);
     vals.date = S.campDates[vals.campDay] || todayStr();
     // เตือนเคสซ้ำ (ชื่อสัตว์ + เจ้าของ + วันเดียวกัน)
     let force = false;
@@ -1851,9 +1883,8 @@ FIELDS.quickLA = [
   { k:'moo', label:'หมู่ที่', type:'text', im:'numeric' }
 ];
 FIELDS.more = {
-  common: [ { k:'sex', label:'เพศ', type:'chips', opts:['ผู้','เมีย'] }, { k:'age', label:'อายุ', type:'num' },
-    { k:'ageUnit', label:'หน่วยอายุ', type:'chips', opts:['เดือน','ปี'] }, { k:'breed', label:'สายพันธุ์', type:'text' } ],
-  SA: [ { k:'animalId', label:'เลขประจำตัว / ไมโครชิป', type:'text' }, { k:'neutered', label:'ทำหมันแล้ว?', type:'chips', opts:['ใช่','ไม่ใช่'] },
+  common: [ { k:'breed', label:'สายพันธุ์', type:'text' } ],
+  SA: [ { k:'animalId', label:'เลขประจำตัว / ไมโครชิป', type:'text' },
     { k:'housing', label:'รูปแบบการเลี้ยง', type:'chips', list:'housing', w:'full' }, { k:'petCount', label:'จำนวนที่เลี้ยง (ตัว)', type:'num' },
     { k:'vaccine', label:'ประวัติวัคซีน', type:'chips', list:'vaccine', w:'full' }, { k:'otherSigns', label:'อาการ/ประวัติที่เกี่ยวข้อง', type:'area', w:'full' } ],
   LA: [ { k:'animalName', label:'ชื่อสัตว์', type:'text' }, { k:'farmNo', label:'ฟาร์มที่', type:'text' },
@@ -1861,14 +1892,58 @@ FIELDS.more = {
     { k:'physicalExam', label:'Physical examination', type:'area', w:'full' } ],
   addr: [ { k:'houseNo', label:'บ้านเลขที่', type:'text' }, { k:'subdistrict', label:'ตำบล', type:'text' }, { k:'district', label:'อำเภอ', type:'text' },
     { k:'province', label:'จังหวัด', type:'text' }, { k:'coordE', label:'พิกัด E', type:'num' }, { k:'coordN', label:'พิกัด N', type:'num' } ],
-  end: [ { k:'sampleTypes', label:'ชนิดตัวอย่างที่เก็บ', type:'multi', list:'sampleTypes', w:'full' }, { k:'procedure', label:'Procedure', type:'text' },
-    { k:'sampleAmount', label:'ปริมาณตัวอย่าง', type:'text' }, { k:'group', label:'กลุ่มที่', type:'group', w:'full' },
+  end: [ { k:'procedure', label:'Procedure', type:'text' },
+    { k:'group', label:'กลุ่มที่', type:'group', w:'full' },
     { k:'refNo', label:'เลขอ้างอิง AppSheet / Doctor Dog', type:'text' }, { k:'recorder', label:'ผู้บันทึก', type:'text', req:true, dl:'members' } ]
 };
 const testsField = g => ({ k:'tests', label:'ส่งตรวจอะไรบ้าง (เลือกได้หลายอย่าง)', type:'multi', opts: testsFor(g).map(t => t.label), req:true, w:'full' });
+/** Signalment — บังคับกรอกตอนรับตัวอย่าง (ทำหมัน: เฉพาะสัตว์เล็ก) */
+const signalFields = g => [ { k:'sex', label:'เพศ', type:'chips', opts:['ผู้','เมีย'], req:true },
+  ...(g === 'LA' ? [] : [{ k:'neutered', label:'ทำหมันแล้ว?', type:'chips', opts:['ใช่','ไม่ใช่'], req:true }]),
+  { k:'age', label:'อายุ', type:'num', req:true }, { k:'ageUnit', label:'หน่วยอายุ', type:'chips', opts:['เดือน','ปี'], req:true } ];
+/** ชนิดตัวอย่าง + ปริมาณของแต่ละชนิด — บังคับกรอก · เก็บปริมาณเป็น "Blood: 1 ml; Fecal: 5 g" ในคอลัมน์ sampleAmount */
+const sampleFields = () => [ { k:'sampleTypes', label:'ชนิดตัวอย่างที่เก็บ', type:'multi', list:'sampleTypes', req:true, w:'full' },
+  { k:'sampleAmount', label:'ปริมาณตัวอย่าง', type:'amounts', req:true, w:'full' } ];
+const AMT_HINT = { 'Blood':'เช่น EDTA 1 ml', 'Fecal':'เช่น 5 g', 'Urine':'เช่น 5 ml' };
+function parseAmounts(str, types) {
+  const out = {}, rest = [];
+  String(str ?? '').split(/\s*;\s*/).filter(Boolean).forEach(p => {
+    const t = types.find(t => p.startsWith(t + ':'));
+    if (t && !(t in out)) out[t] = p.slice(t.length + 1).trim(); else rest.push(p);
+  });
+  if (rest.length) { const t = types.find(t => !(t in out)); if (t) out[t] = rest.join(', '); } // ข้อมูลเก่าที่พิมพ์รวมช่องเดียว
+  return out;
+}
+function amountsInner(types, amounts, ro) {
+  if (!types.length) return '<div class="small muted">เลือกชนิดตัวอย่างก่อน แล้วกรอกปริมาณของแต่ละชนิด</div>';
+  return types.map((t, i) => `<div class="amtrow"><label for="amt_${i}">${esc(t)}</label><input id="amt_${i}" data-amt="${esc(t)}" type="text" value="${esc(amounts[t] || '')}" placeholder="${esc(AMT_HINT[t] || 'ปริมาณ / จำนวน')}" autocomplete="off" ${ro ? 'disabled' : ''}></div>`).join('');
+}
+function amountsFld(rec, ro) {
+  const ts = splitMulti(rec.sampleTypes);
+  return `<div class="fld full" data-k="sampleAmount"><div class="lab">ปริมาณตัวอย่าง — กรอกของแต่ละชนิดที่เก็บ<span class="req">*</span></div><div id="amtBox">${amountsInner(ts, parseAmounts(rec.sampleAmount, ts), ro)}</div></div>`;
+}
+/** โควตาสัตว์เล็ก: เลือด / อุจจาระ อย่างละไม่เกิน N ตัวอย่าง ต่อหน่วย ต่อวัน (Settings: saMaxBlood, saMaxFecal · เริ่มต้น 10 · 0 = ไม่จำกัด) */
+const SA_LIMITS = { 'Blood': ['saMaxBlood', 'เลือด'], 'Fecal': ['saMaxFecal', 'อุจจาระ'] };
+function saQuota(day, unit, selfId) {
+  return Object.keys(SA_LIMITS).map(t => {
+    const raw = S.cfg[SA_LIMITS[t][0]], max = raw === '' || raw == null ? 10 : Number(raw);
+    const n = rows('Cases').filter(c => c.id !== selfId && c.animalGroup !== 'LA' && String(c.campDay) === String(day) && c.unit === unit && splitMulti(c.sampleTypes).includes(t)).length;
+    return { t, label: SA_LIMITS[t][1], n, max };
+  }).filter(q => q.max > 0);
+}
+function quotaHTML(day, unit, selfId, g) {
+  if (!day || !unit || g === 'LA' || unitInfo(unit).group === 'LA') return '';
+  const qs = saQuota(day, unit, selfId);
+  return qs.length ? `<div class="small muted" style="margin-top:6px">โควตาสัตว์เล็ก หน่วย ${esc(unit)} Day ${esc(day)} (รับแล้ว/สูงสุด): ${qs.map(q => `<span class="${q.n >= q.max ? 'qfull' : ''}">${q.label} ${q.n}/${q.max}${q.n >= q.max ? ' — เต็มแล้ว' : ''}</span>`).join(' · ')}</div>` : '';
+}
+function quotaBlock(vals, selfId) {
+  if (vals.animalGroup === 'LA' || unitInfo(vals.unit).group === 'LA') return '';
+  const ts = splitMulti(vals.sampleTypes), full = saQuota(vals.campDay, vals.unit, selfId).filter(q => ts.includes(q.t) && q.n >= q.max);
+  return full.length ? `ตัวอย่าง${full.map(q => q.label).join(' และ ')}ของหน่วย ${vals.unit} Day ${vals.campDay} เต็มแล้ว (${full.map(q => q.n + '/' + q.max).join(', ')}) — รับเพิ่มไม่ได้` : '';
+}
 function caseFields(group) {
   const g = group === 'LA' ? 'LA' : 'SA';
-  return [...FIELDS.head, ...FIELDS['quick' + g], testsField(g), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' },
+  return [...FIELDS.head, ...FIELDS['quick' + g], ...signalFields(g), testsField(g), ...sampleFields(), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' },
     ...FIELDS.more.common, ...FIELDS.more[g], ...FIELDS.more.addr, ...FIELDS.more.end];
 }
 function caseFormHTML(rec, ro) {
@@ -1885,9 +1960,13 @@ function caseFormHTML(rec, ro) {
       </div>`}
       ${formHTML(FIELDS.head, rec, ro)}
       <div style="height:8px"></div>${formHTML(FIELDS['quick' + g], rec, ro)}
+      <h3 style="margin:14px 0 6px">Signalment</h3>${formHTML(signalFields(g), rec, ro)}
+      <h3 style="margin:14px 0 6px">ตัวอย่างที่เก็บ / ส่งตรวจ</h3>
+      <div class="grid">${fieldHTML(sampleFields()[0], rec.sampleTypes, ro)}${amountsFld(rec, ro)}</div>
+      <div id="quotaBox">${quotaHTML(rec.campDay, rec.unit, rec.id, g)}</div>
       <div style="height:8px"></div>${formHTML([testsField(g), { k:'remarks', label:'หมายเหตุ', type:'area', w:'full' }], rec, ro)}
     </fieldset></div>
-    <details class="sec"><summary>ข้อมูลเพิ่มเติม (ไม่บังคับ) — เพศ อายุ สายพันธุ์ ที่อยู่ ชนิดตัวอย่าง</summary><div class="body"><fieldset ${ro ? 'disabled' : ''}>
+    <details class="sec"><summary>ข้อมูลเพิ่มเติม (ไม่บังคับ) — สายพันธุ์ ประวัติ ที่อยู่</summary><div class="body"><fieldset ${ro ? 'disabled' : ''}>
       ${formHTML([...FIELDS.more.common, ...FIELDS.more[g]], rec, ro)}
       <h3 style="margin:14px 0 6px">ที่อยู่ / พิกัด</h3>${formHTML(FIELDS.more.addr, rec, ro)}
       ${ro ? '' : '<button type="button" class="btn" id="gpsBtn" style="margin-top:8px">📍 ใช้ GPS เครื่องนี้</button> <span class="small muted" id="gpsMsg"></span>'}
@@ -1906,6 +1985,28 @@ const PATHO = [
   ['bp_hemo_mycoplasma','Hemotropic Mycoplasma','Hemo. Myco'], ['bp_setaria','Setaria (non-virulent)','Setaria']
 ].map(([k, name, sh]) => ({ k, name, sh }));
 const isPos = v => String(v).toLowerCase() === 'positive';
+const pathoKey = p => p.name.replace(/\s*\(.*$/, '').toLowerCase();
+/** เคสโครายตัวที่ลงผล Blood parasite ในแท็บผลแลปแล้ว → แปลงเป็นแถวแบบเดียวกับชีต BloodParasite_Cattle (ไม่นับซ้ำกับแถวที่ผูก caseId ไว้) */
+function cattleFromCases() {
+  const linked = new Set(rows('BloodParasite_Cattle').map(r => r.caseId).filter(Boolean)), best = {};
+  rows('LA_Results').forEach(r => {
+    if (!filled(r.bp_result)) return;
+    const b = best[r.caseId]; if (!b || Number(r.examNo || 1) >= Number(b.examNo || 1)) best[r.caseId] = r;
+  });
+  return Object.values(best).map(r => {
+    const c = getRec('Cases', r.caseId);
+    if (!c || isDel(c) || c.animalGroup !== 'LA' || linked.has(c.id)) return null;
+    const found = splitMulti(r.bp_result).map(x => x.toLowerCase());
+    const o = { id: 'case:' + c.id, _case: c.id, caseId: c.id, sampleNo: c.sampleNo, campDay: c.campDay, date: c.date, unit: c.unit, group: c.group,
+      farmName: c.farmName, ownerName: c.ownerName, moo: c.moo, animalId: c.animalId || c.animalName || '', species: c.species,
+      age: !filled(c.age) ? '' : c.ageUnit === 'เดือน' ? Math.round(Number(c.age) / 12 * 10) / 10 : c.age,
+      sex: c.sex === 'ผู้' ? 'M' : c.sex === 'เมีย' ? 'F' : (c.sex || ''), breed: c.breed, method: r.bp_method, note: r.bp_note,
+      recorder: r.recorder || r.updatedBy || r.createdBy, createdBy: r.createdBy, updatedBy: r.updatedBy, _pending: r._pending };
+    PATHO.forEach(p => o[p.k] = found.some(x => x.startsWith(pathoKey(p))) ? 'Positive' : 'Negative');
+    return o;
+  }).filter(Boolean);
+}
+const cattleAll = () => rows('BloodParasite_Cattle').concat(cattleFromCases());
 /** 95% CI แบบ Wilson */
 function wilson(x, n, z = 1.96) {
   if (!n) return [0, 0];
@@ -2014,11 +2115,11 @@ function cattleEntry(el, top) {
 
 function cattleFilters() { return Object.assign({ day: '', farm: '', species: '', unit: '', method: '' }, store.get('bpFilter', {})); }
 function cattleFiltered(f) {
-  return rows('BloodParasite_Cattle').filter(r => (!f.day || String(r.campDay) === f.day) && (!f.farm || r.farmName === f.farm) &&
+  return cattleAll().filter(r => (!f.day || String(r.campDay) === f.day) && (!f.farm || r.farmName === f.farm) &&
     (!f.species || r.species === f.species) && (!f.unit || r.unit === f.unit) && (!f.method || r.method === f.method));
 }
 function cattleFilterHTML(f) {
-  const all = rows('BloodParasite_Cattle');
+  const all = cattleAll();
   const opt = (k, label, vals, show = v => v) => `<div class="fld"><label>${label}</label><select data-f="${k}"><option value="">ทั้งหมด</option>${vals.map(v => `<option value="${esc(v)}" ${String(f[k]) === String(v) ? 'selected' : ''}>${esc(show(v))}</option>`).join('')}</select></div>`;
   const uniq = k => [...new Set(all.map(r => r[k]).filter(filled))].sort();
   return `<div class="card"><div class="grid">${opt('day', 'วัน', campDays().map(String), v => 'Day ' + v)}${opt('farm', 'ฟาร์ม', uniq('farmName'))}
@@ -2046,6 +2147,7 @@ function cattlePrev(el, top) {
           <td><div class="cibar"><i style="width:${(anyX / n * 100).toFixed(1)}%"></i><s style="left:${(anyCI[0] * 100).toFixed(1)}%;width:${((anyCI[1] - anyCI[0]) * 100).toFixed(1)}%"></s></div></td></tr>
         </tbody></table></div>
         <p class="small muted">แท่งสี = ความชุก · เส้นขอบ = ช่วงความเชื่อมั่น 95% · ความชุก = จำนวน Positive ÷ จำนวนที่ตรวจ × 100</p>
+        <p class="small muted">🔗 รวมข้อมูลอัตโนมัติ: กรอกเป็นชุด ${data.filter(r => !r._case).length} ตัว + เคสโครายตัวที่ลงผล Blood parasite แล้ว ${data.filter(r => r._case).length} ตัว · อัปเดตเองเมื่อมีคนลงผลเพิ่ม</p>
       </div>
       <div class="card"><div class="row" style="justify-content:space-between"><h2 style="margin:0">แยกตาม</h2>
         <select id="bpBy" style="width:auto">${Object.entries(byLabel).map(([k, l]) => `<option value="${k}" ${k === by ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
@@ -2058,7 +2160,7 @@ function cattlePrev(el, top) {
         <button class="btn" id="csvAnon">⬇ CSV รายตัว (ตัดชื่อเจ้าของ — สำหรับเผยแพร่)</button>
         <button class="btn" id="csvSum">⬇ CSV สรุปความชุก</button></div>
         <p class="small muted">ส่งออกตามตัวกรองด้านบน · ไฟล์เปิดใน Excel ภาษาไทยได้ · ค่า Positive = 1, Negative = 0 สำหรับวิเคราะห์ทางสถิติ</p></div>`
-      : `<div class="card empty">ยังไม่มีข้อมูลตามตัวกรอง — ไปที่แท็บ <a href="#/cattle/entry">กรอกเป็นชุด</a></div>`);
+      : `<div class="card empty">ยังไม่มีข้อมูลตามตัวกรอง — ลงผล Blood parasite ในเคสโค (ระบบดึงมาให้อัตโนมัติ) หรือไปที่แท็บ <a href="#/cattle/entry">กรอกเป็นชุด</a></div>`);
     bindCattleFilters(el, draw);
     const byEl = $('#bpBy', el); if (byEl) byEl.onchange = () => { store.set('bpBy', byEl.value); draw(); };
     const raw = anon => {
@@ -2084,13 +2186,13 @@ function cattleList(el, top) {
     el.innerHTML = top + cattleFilterHTML(f) + `<div class="card" style="padding:0">
       ${data.length ? `<div class="tblwrap" style="border:0"><table class="tbl"><thead><tr><th>เลขตัวอย่าง</th><th>ฟาร์ม</th><th>หมายเลขสัตว์</th><th>อายุ/เพศ</th><th>วิธี</th><th>ผล Positive</th><th>บันทึกโดย</th></tr></thead><tbody>
         ${data.map(r => { const ps = PATHO.filter(p => isPos(r[p.k])); return `<tr data-id="${esc(r.id)}" style="cursor:pointer">
-          <td class="mono"><b>${esc(r.sampleNo || 'รอเลข')}</b>${r._pending ? ' <span class="badge pend">⏳</span>' : ''}</td><td>${esc(r.farmName)}<div class="small muted">Day ${esc(r.campDay)} · ${esc(r.species || '')}</div></td>
+          <td class="mono"><b>${esc(r.sampleNo || 'รอเลข')}</b>${r._pending ? ' <span class="badge pend">⏳</span>' : ''}${r._case ? '<div class="small muted">🔗 จากเคส</div>' : ''}</td><td>${esc(r.farmName || '')}<div class="small muted">Day ${esc(r.campDay)} · ${esc(r.species || '')}</div></td>
           <td>${esc(r.animalId)}</td><td>${esc(r.age ?? '')} ${filled(r.age) ? 'ปี' : ''} ${esc(r.sex || '')}</td><td class="small">${esc(r.method || '')}</td>
           <td>${ps.length ? ps.map(p => `<span class="badge pospill"><i>${esc(p.sh)}</i></span>`).join(' ') : '<span class="muted">Negative ทั้งหมด</span>'}</td>
           <td class="small">${esc(r.updatedBy || r.createdBy || '')}</td></tr>`; }).join('')}
       </tbody></table></div>` : '<div class="empty">ยังไม่มีข้อมูล</div>'}</div>`;
     bindCattleFilters(el, draw);
-    $$('tr[data-id]', el).forEach(tr => tr.onclick = () => editCattle(tr.dataset.id, draw));
+    $$('tr[data-id]', el).forEach(tr => tr.onclick = () => tr.dataset.id.startsWith('case:') ? go('#/case/' + encodeURIComponent(tr.dataset.id.slice(5)) + '/bp') : editCattle(tr.dataset.id, draw));
   };
   draw();
   currentView.refresh = draw;
@@ -2150,6 +2252,7 @@ function drawInfoTab(body, c, ro, setDirty) {
       const fields = fieldsNow();
       const vals = Object.assign(readForm(form, fields), { animalGroup: st.animalGroup });
       if (validateForm(form, fields, vals).length) return toast('กรุณากรอกช่องที่จำเป็นให้ครบ', 'err');
+      const qm = quotaBlock(vals, c.id); if (qm) return toast(qm, 'err', 7000);
       if (vals.campDay !== c.campDay) vals.date = S.campDates[vals.campDay] || c.date;
       const ch = diffOf(c, vals);
       if (!Object.keys(ch).length) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
@@ -2449,7 +2552,7 @@ function printCase(c) {
     ['เพศ', [c.sex, c.neutered === 'ใช่' ? 'ทำหมันแล้ว' : ''].filter(Boolean).join(' ') || '-'], ['อายุ', filled(c.age) ? `${c.age} ${c.ageUnit || ''}` : '-'],
     [g === 'LA' ? 'ฟาร์ม / เจ้าของ' : 'เจ้าของ', [g === 'LA' ? c.farmName : '', c.ownerName].filter(Boolean).join(' / ') || '-'],
     ['ที่อยู่', [c.houseNo, c.moo ? 'ม.' + c.moo : '', c.subdistrict ? 'ต.' + c.subdistrict : '', c.district ? 'อ.' + c.district : ''].filter(Boolean).join(' ') || '-'],
-    ['ชนิดตัวอย่าง', splitMulti(c.sampleTypes).join(', ') || '-'], ['ส่งตรวจ', requestedTests(c).map(k => TESTS.find(t => t.k === k).short).join(', ') || '-']
+    ['ชนิดตัวอย่าง / ปริมาณ', filled(c.sampleAmount) ? String(c.sampleAmount).replace(/;/g, ',') : (splitMulti(c.sampleTypes).join(', ') || '-')], ['ส่งตรวจ', requestedTests(c).map(k => TESTS.find(t => t.k === k).short).join(', ') || '-']
   ];
   const itr = []; for (let i = 0; i < info.length; i += 2) itr.push(`<tr><td class="k">${info[i][0]}</td><td class="v">${esc(info[i][1])}</td><td class="k">${info[i + 1][0]}</td><td class="v">${esc(info[i + 1][1])}</td></tr>`);
   const recorder = (row && (row.updatedBy || row.createdBy)) || c.recorder || '';
