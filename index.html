@@ -1027,7 +1027,7 @@ function renderLogin(msg) {
     </form>
     <form id="step2" class="hidden" autocomplete="off">
       <div class="fld" style="margin-bottom:8px"><label for="lgName">ชื่อของคุณ (ไม่ต้องใส่นามสกุล)<span class="req">*</span></label>
-        <input id="lgName" type="text" value="${esc(firstName(last.user || ''))}" placeholder="เช่น อารัทธ์" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+        <input id="lgName" type="text" value="" autocomplete="off" placeholder="เช่น อารัทธ์" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
       <div id="lgMatch" class="lgmatch"></div>
       <div class="fld" style="margin:10px 0 14px"><div class="lab">กลุ่ม (ล็อกตามรายชื่อค่าย)</div><div id="lgGroupShow" class="grpshow muted">— พิมพ์ชื่อก่อน —</div></div>
       <div class="alert info small">ชื่อนี้จะถูกบันทึกเป็น "ผู้บันทึก/ผู้แก้ไข" ในทุกข้อมูลที่คุณเพิ่มหรือแก้ และระบบเก็บประวัติการเข้าใช้งานไว้</div>
@@ -1147,7 +1147,7 @@ async function switchGroup() {
   toast(s.group ? `ตอนนี้: กลุ่ม ${s.group}` : 'ไม่สังกัดกลุ่ม', 'info');
 }
 function logout(msg, keepPin) {
-  S.session = null; store.del('session');
+  S.session = null; store.del('session'); store.del('lastLogin');
   if (!keepPin) store.del('pin');
   clearInterval(pollTimer); clearInterval(retryTimer);
   history.replaceState(null, '', location.pathname + location.search);
