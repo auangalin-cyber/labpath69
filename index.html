@@ -2731,8 +2731,50 @@ function kpiHTML(list, f) {
         ${farms.map(fm => { const L = items.filter(it => it.farm === fm); return `<tr><td><b>${esc(fm)}</b></td><td class="n mono">${L.length}</td><td>${rankHTML(L, 5)}</td></tr>`; }).join('')}</tbody></table></div></div>` : ''}
       <div class="card"><h2>${g === 'LA' ? '4.2' : '4.'} ผลตรวจรายวัน — วันนี้เจออะไรบ้าง (มาก → น้อย)</h2>${byDayHTML(items)}</div>`;
   };
-  return `<div class="alert info small">สรุปสำหรับนำเสนอ PBL · เลือก "วัน" ด้านบนเพื่อดูเฉพาะวันนั้น · ตัวเลข "พบ/ตรวจ" = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจชนิดนั้นแล้ว</div>
+  return `<div class="row" style="justify-content:flex-end;margin-bottom:8px"><button class="btn pri" type="button" id="kpiCsv">⬇ Export KPI (Excel/CSV)</button></div>
+    <div class="alert info small">สรุปสำหรับนำเสนอ PBL · เลือก "วัน" ด้านบนเพื่อดูเฉพาะวันนั้น · ตัวเลข "พบ/ตรวจ" = จำนวนตัวอย่างที่พบ ÷ จำนวนตัวอย่างที่ลงผลการตรวจชนิดนั้นแล้ว</div>
     ${!f.sp || f.sp === 'โค/สัตว์ใหญ่' ? section('LA', '🐄 สัตว์ใหญ่') : ''}${f.sp === 'โค/สัตว์ใหญ่' ? '' : section('SA', '🐕 สัตว์เล็ก')}`;
+}
+
+/** Export KPI เป็น CSV (1 ไฟล์ · ทุกหัวข้อในหน้า KPI ตามตัวกรอง) */
+function kpiExport(list, f) {
+  const all = kpiItems(list, f), days = campDays(), out = [];
+  const P = (x, n) => n ? pct(x / n) : '';
+  const add = (grp, topic, sub, item, x, n, note) => out.push([grp, topic, sub, item, x, n, P(x, n), note || '']);
+  const rank = (grp, topic, sub, items) => {
+    const rk = kpiRank(items);
+    if (!items.some(it => Object.keys(it.done).length)) return add(grp, topic, sub, '(ยังไม่มีผลการตรวจ)', '', '');
+    if (!rk.length) return add(grp, topic, sub, '(ไม่พบเชื้อ / ผลบวก)', '', '');
+    rk.forEach((o, i) => add(grp, topic, sub, (i + 1) + '. ' + o.name, o.x, o.n));
+  };
+  [['LA', 'สัตว์ใหญ่'], ['SA', 'สัตว์เล็ก']].forEach(([g, gname]) => {
+    if (g === 'LA' && f.sp && f.sp !== 'โค/สัตว์ใหญ่') return;
+    if (g === 'SA' && f.sp === 'โค/สัตว์ใหญ่') return;
+    const items = all.filter(it => it.g === g), n = items.length;
+    const tested = items.filter(it => Object.keys(it.done).length).length;
+    add(gname, '1. จำนวนตัวอย่าง', '', 'ส่งตัวอย่างทั้งหมด (ตัว)', n, '');
+    add(gname, '1. จำนวนตัวอย่าง', '', 'ลงผลแล้ว (ตัว)', tested, n);
+    add(gname, '1. จำนวนตัวอย่าง', '', 'ยังไม่ลงผล (ตัว)', n - tested, n);
+    if (!n) return;
+    const farms = [...new Set(items.map(it => it.farm))].sort((a, b) => a.localeCompare(b, 'th', { numeric: true }));
+    if (g === 'LA') {
+      add(gname, '2. จำนวนฟาร์ม', '', 'จำนวนฟาร์ม', farms.length, '');
+      farms.forEach(fm => add(gname, '2. จำนวนฟาร์ม', '', fm, items.filter(it => it.farm === fm).length, n));
+    } else {
+      S.units.forEach(u => {
+        const L = items.filter(it => it.unit === u.code); if (!L.length) return;
+        add(gname, '2. จำนวนตัวอย่างแยกตามหน่วย', 'รวมทุกวัน', u.code + ' — ' + u.name, L.length, n);
+        days.forEach(d => { const x = L.filter(it => it.day === d).length; if (x) add(gname, '2. จำนวนตัวอย่างแยกตามหน่วย', 'Day ' + d, u.code + ' — ' + u.name, x, ''); });
+      });
+    }
+    TESTS.map(t => ({ t, x: items.filter(it => it.req.includes(t.k)).length })).filter(o => o.x).sort((a, b) => b.x - a.x)
+      .forEach(o => add(gname, '3. ส่งตรวจอะไรบ้าง', '', o.t.label, o.x, n, '% ของตัวอย่างทั้งหมด'));
+    if (g === 'LA') farms.forEach(fm => rank(gname, '4.1 ผลตรวจรายฟาร์ม', fm, items.filter(it => it.farm === fm)));
+    days.forEach(d => { const L = items.filter(it => it.day === d); if (L.length) rank(gname, g === 'LA' ? '4.2 ผลตรวจรายวัน' : '4. ผลตรวจรายวัน', 'Day ' + d + (S.campDates[d] ? ' (' + S.campDates[d] + ')' : ''), L); });
+  });
+  const tag = [f.day ? 'day' + f.day : 'alldays', f.unit, f.sp ? (f.sp === 'โค/สัตว์ใหญ่' ? 'LA' : f.sp) : ''].filter(Boolean).join('_');
+  downloadCSV(`labpath_KPI_${tag}_${todayStr()}.csv`, ['กลุ่มสัตว์', 'หัวข้อ', 'ฟาร์ม / วัน / หน่วย', 'รายการ', 'จำนวน', 'จากทั้งหมด (n)', '%', 'หมายเหตุ'], out);
+  toast('ดาวน์โหลด KPI แล้ว', 'ok');
 }
 
 function VIEWS_reports(el, tab) {
@@ -2792,6 +2834,7 @@ function VIEWS_reports(el, tab) {
       ${body}`;
     $$('[data-rf]', el).forEach(s => s.onchange = () => { const nf = repFilters(); nf[s.dataset.rf] = s.value; store.set('repFilter', nf); draw(); });
     $$('[data-x]', el).forEach(b => b.onclick = () => runExport(b.dataset.x, list, f));
+    const kb = $('#kpiCsv', el); if (kb) kb.onclick = () => kpiExport(list, f);
   };
   draw();
   currentView.refresh = draw;
