@@ -2332,7 +2332,7 @@ function VIEWS_kits(el, kind) {
       ${open.length ? `<div class="card" style="border-color:#f0a8b3"><h2 style="border-left-color:var(--err);color:var(--err)">⚠ เบิกแล้วยังไม่บันทึกยอดคืน (${open.length})</h2>
         <div class="tblwrap"><table class="tbl"><thead><tr><th>วัน</th><th>หน่วย</th><th>รายการ</th><th class="n">เบิก</th><th>ผู้เบิก</th><th></th></tr></thead><tbody>
         ${open.map(r => `<tr class="${today && Number(r.campDay) < today ? 'late' : ''}"><td>Day ${esc(r.campDay)}${Number(r.campDay) < (today || 0) ? ' <span class="badge st-revise">ค้างข้ามวัน</span>' : ''}</td><td>${esc(r.unit)}</td><td><b>${esc(r.item)}</b></td>
-          <td class="n mono">${esc(r.takenOut)}</td><td class="small">${esc(r.takenBy || r.createdBy || '')}<div class="muted">${fmtTime(r.createdAt)}</div></td>
+          <td class="n mono">${esc(r.takenOut)}</td><td class="small">${esc(r.takenBy || r.createdBy || '')} ${grpTag(r)}<div class="muted">${fmtTime(r.createdAt)}</div></td>
           <td class="n"><button class="btn pri" data-ret="${esc(r.id)}">บันทึกยอดคืน</button></td></tr>`).join('')}
         </tbody></table></div></div>` : `<div class="alert ok small">✓ ทุกรายการที่เบิกบันทึกยอดคืนแล้ว</div>`}
       <div class="card"><h2>คงเหลือในตู้ (เรียลไทม์)</h2>
@@ -2347,7 +2347,7 @@ function VIEWS_kits(el, kind) {
         ${logs.length ? `<div class="tblwrap"><table class="tbl"><thead><tr><th>วัน</th><th>หน่วย</th><th>รายการ</th><th class="n">เบิก</th><th class="n">คืน</th><th class="n">ใช้ไป</th><th>ผู้เบิก</th><th>ผู้ตรวจนับ</th><th></th></tr></thead><tbody>
         ${[...logs].sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).map(r => `<tr><td>Day ${esc(r.campDay)}</td><td>${esc(r.unit)}</td><td>${esc(r.item)}</td>
           <td class="n mono">${esc(r.takenOut)}</td><td class="n mono">${filled(r.returned) ? esc(r.returned) : '<span class="badge st-revise">ยังไม่คืน</span>'}</td><td class="n mono">${esc(r.used ?? '')}</td>
-          <td class="small">${esc(r.takenBy || '')}</td><td class="small">${esc(r.countedBy || '')}</td>
+          <td class="small">${esc(r.takenBy || '')} ${grpTag(r)}</td><td class="small">${esc(r.countedBy || '')}</td>
           <td class="n" style="white-space:nowrap">${canEditLog(r) ? `<button class="btn" data-edit="${esc(r.id)}">✏️ แก้ไข</button>` : ''}${r._pending ? ' <span class="badge pend">⏳</span>' : ''}</td></tr>`).join('')}
         </tbody></table></div>` : '<div class="empty">ยังไม่มีการเบิก</div>'}</div>`;
     $('#takeBtn', el).onclick = () => takeItem(sheet, kind, items(), draw);
@@ -2357,30 +2357,43 @@ function VIEWS_kits(el, kind) {
   draw();
   currentView.refresh = draw;
 }
+/** หาคนในรายชื่อค่ายจากชื่อที่พิมพ์ (ชื่อเต็ม หรือชื่อต้นที่ไม่ซ้ำ) → {name, group} | null */
+function memberOf(name) {
+  if (!String(name || '').trim()) return null;
+  const full = S.members.filter(m => normName(m.name) === normName(name));
+  if (full.length === 1) return full[0];
+  const first = S.members.filter(m => firstName(m.name) === firstName(name));
+  return first.length === 1 ? first[0] : null;
+}
+const takerHint = name => { const m = memberOf(name); return m ? `กลุ่ม ${m.group} (${m.name})` : (String(name || '').trim() ? 'ไม่พบชื่อในรายชื่อค่าย — ใช้กลุ่มของผู้บันทึก' : ''); };
+const grpTag = r => filled(r.group) ? `<span class="badge" style="background:rgba(100,116,139,.15)">กลุ่ม ${esc(r.group)}</span>` : '';
 const canEditLog = r => isStaff() || (!!S.session.group && String(r.group || '') === String(S.session.group));
 
 async function takeItem(sheet, kind, items, after) {
   const s = S.session;
-  const v = await modal(`<h2>เบิก${kind === 'kit' ? ' Test kit' : 'อุปกรณ์'}${s.group ? ' — กลุ่ม ' + esc(s.group) : ''}</h2>
+  const v = await modal(`<h2>เบิก${kind === 'kit' ? ' Test kit' : 'อุปกรณ์'}</h2>
     <div class="grid">
       ${fieldHTML({ k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' }, todayDay() || 1)}
       ${fieldHTML({ k:'unit', label:'หน่วยที่เบิก', type:'unit', req:true, w:'l' }, prefUnit())}
       <div class="fld full"><div class="lab">รายการ<span class="req">*</span></div><div class="unitpick">${items.map(i => `<label><input type="radio" name="item" value="${esc(i.name)}"> ${esc(i.name)}</label>`).join('')}</div></div>
       ${fieldHTML({ k:'takenOut', label:'จำนวนที่เบิกออก (อัน)', type:'num', im:'numeric', req:true }, '')}
       ${fieldHTML({ k:'takenBy', label:'ผู้เบิก', type:'text', dl:'members' }, s.user)}
+      <div class="fld"><div class="lab">เบิกโดยกลุ่ม</div><div class="small" id="takerGrp" style="padding-top:8px">${esc(takerHint(s.user) || (s.group ? 'กลุ่ม ' + s.group : '-'))}</div></div>
       ${fieldHTML({ k:'note', label:'หมายเหตุ', type:'text', w:'full' }, '')}
     </div>
-    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">💾 บันทึกการเบิก</button></div>`);
+    <div class="acts"><button class="btn" data-v="null">ยกเลิก</button><button class="btn pri" data-v="ok" data-collect="1">💾 บันทึกการเบิก</button></div>`,
+    { onMount(box) { const i = $('[name=takenBy]', box), o = $('#takerGrp', box); i.addEventListener('input', () => o.textContent = takerHint(i.value) || '-'); } });
   if (!v || typeof v !== 'object') return;
   const day = Number(lastModalDay()) || todayDay() || 1;
   const n = Number(v.takenOut);
   if (!v.item) return toast('กรุณาเลือกรายการ', 'warn');
   if (!Number.isInteger(n) || n <= 0) return toast('จำนวนที่เบิกต้องเป็นจำนวนเต็มมากกว่า 0', 'warn');
   setPrefUnit(v.unit);
-  const rec = { unit: v.unit, group: s.group, campDay: day, date: S.campDates[day] || todayStr(), item: v.item, takenOut: n, returned: '',
-    takenBy: v.takenBy || s.user, note: v.note };
+  const who = memberOf(v.takenBy || s.user); // กลุ่มของการเบิก = กลุ่มของผู้เบิก
+  const rec = { unit: v.unit, group: who ? who.group : s.group, campDay: day, date: S.campDates[day] || todayStr(), item: v.item, takenOut: n, returned: '',
+    takenBy: who ? who.name : (v.takenBy || s.user), note: v.note };
   if (!rec.unit) return toast('กรุณาเลือกหน่วย', 'warn');
-  saveToast(await saveRecord(sheet, uuid(), rec, { isNew: true }), `เบิก ${v.item} ${n} อัน`);
+  saveToast(await saveRecord(sheet, uuid(), rec, { isNew: true }), `เบิก ${v.item} ${n} อัน${rec.group ? ' · กลุ่ม ' + rec.group : ''}`);
   after();
 }
 /** อ่านวันที่เลือกใน modal ล่าสุด (modal collect ไม่อ่าน chip ที่เป็น checkbox) */
@@ -2420,7 +2433,7 @@ async function editLog(sheet, kind, items, id, after) {
   if (!canEditLog(r)) return toast('แก้ได้เฉพาะกลุ่ม ' + (r.group || '-') + ' หรือ Lab-path', 'warn');
   const names = items.map(i => i.name); if (r.item && !names.includes(r.item)) names.push(r.item);
   const v = await modal(`<h2>แก้ไขการเบิก${kind === 'kit' ? ' Test kit' : 'อุปกรณ์'}</h2>
-    <p class="small muted">เบิกโดย ${esc(r.takenBy || r.createdBy || '')} · บันทึกเมื่อ ${fmtTime(r.createdAt)}</p>
+    <p class="small muted">เบิกโดย ${esc(r.takenBy || r.createdBy || '')}${filled(r.group) ? ' · กลุ่ม ' + esc(r.group) : ''} · บันทึกเมื่อ ${fmtTime(r.createdAt)}</p>
     <div class="grid">
       ${fieldHTML({ k:'campDay', label:'วันค่าย', type:'day', req:true, w:'full' }, r.campDay)}
       ${fieldHTML({ k:'unit', label:'หน่วยที่เบิก', type:'unit', req:true, w:'l' }, r.unit)}
@@ -2447,8 +2460,9 @@ async function editLog(sheet, kind, items, id, after) {
   if (!Number.isInteger(n) || n <= 0) return toast('จำนวนที่เบิกต้องเป็นจำนวนเต็มมากกว่า 0', 'warn');
   if (back !== '' && (!Number.isInteger(back) || back < 0)) return toast('จำนวนคืนต้องเป็นจำนวนเต็ม 0 ขึ้นไป', 'warn');
   if (back !== '' && back > n) return toast('จำนวนคืนมากกว่าจำนวนที่เบิก', 'warn');
+  const who = memberOf(v.takenBy);
   const ch = diffOf(r, { campDay: day, date: S.campDates[day] || r.date, unit: v.unit, item: v.item, takenOut: n, returned: back,
-    takenBy: v.takenBy, countedBy: v.countedBy, note: v.note });
+    takenBy: who ? who.name : v.takenBy, countedBy: v.countedBy, note: v.note, ...(who ? { group: who.group } : {}) });
   if (!Object.keys(ch).length) return toast('ไม่มีการเปลี่ยนแปลง', 'info');
   saveToast(await saveRecord(sheet, id, ch), 'แก้ไขรายการเบิกแล้ว');
   after();
